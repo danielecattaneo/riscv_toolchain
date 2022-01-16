@@ -9,6 +9,7 @@ int main(int argc, char *argv[])
 {
    FILE *fpIn;
    size_t size, szp;
+   t_cpuStatus status;
    int i;
 
    fpIn = fopen(argv[1], "rb");
@@ -24,8 +25,9 @@ int main(int argc, char *argv[])
    }
 
    cpuReset(0);
-   for (i = 0; i < 10; i++) {
-      t_cpuStatus status = cpuTick();
+   status = CPU_STATUS_OK;
+   while (status == CPU_STATUS_OK) {
+      status = cpuTick();
       printf("status = %d, pc = %08x\n", status, cpuGetRegister(CPU_REG_PC));
    }
    return 0;
