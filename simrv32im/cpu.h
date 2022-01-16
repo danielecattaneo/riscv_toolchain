@@ -2,10 +2,10 @@
 #define CPU_H
 
 #include <stdint.h>
+#include "isa.h"
 
 
-typedef uint32_t t_cpuXSize;
-typedef t_cpuXSize t_cpuRegValue;
+typedef t_isaXSize t_cpuRegValue;
 
 typedef int t_cpuRegID;
 enum {

@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
    while (status == CPU_STATUS_OK) {
       status = cpuTick();
       printf("status = %d, pc = %08x\n", status, cpuGetRegister(CPU_REG_PC));
+
    }
    return 0;
 }

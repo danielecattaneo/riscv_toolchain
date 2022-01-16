@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 
-typedef t_cpuXSize t_memAddress;
+typedef t_isaXSize t_memAddress;
 typedef t_memAddress t_memSize;
 
 typedef int t_memError;
