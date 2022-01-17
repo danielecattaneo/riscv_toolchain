@@ -9,6 +9,7 @@ int isaDisassembleOPIMM(uint32_t instr, char *out, int bufsz);
 int isaDisassembleLOAD(uint32_t instr, char *out, int bufsz);
 int isaDisassembleSTORE(uint32_t instr, char *out, int bufsz);
 int isaDisassembleBRANCH(uint32_t instr, char *out, int bufsz);
+int isaDisassembleSYSTEM(uint32_t instr, char *out, int bufsz);
 
 int isaDisassemble(uint32_t instr, char *out, int bufsz)
 {
@@ -45,6 +46,8 @@ int isaDisassemble(uint32_t instr, char *out, int bufsz)
          rd = ISA_INST_RD(instr);
          imm = ISA_INST_U_IMM20_SEXT(instr);
          return snprintf(out, bufsz, "AUIPC x%d, 0x%08"PRIx32, rd, imm << 12);
+      case ISA_INST_OPCODE_SYSTEM:
+         return isaDisassembleSYSTEM(instr, out, bufsz);
    }
 
    return isaDisassembleIllegal(instr, out, bufsz);
@@ -152,5 +155,16 @@ int isaDisassembleBRANCH(uint32_t instr, char *out, int bufsz)
       return isaDisassembleIllegal(instr, out, bufsz);
 
    return snprintf(out, bufsz, "%s x%d, x%d, *%+"PRId32, mnem, rs1, rs2, imm);
+}
+
+int isaDisassembleSYSTEM(uint32_t instr, char *out, int bufsz)
+{
+   if (ISA_INST_FUNCT3(instr) != 0)
+      return isaDisassembleIllegal(instr, out, bufsz);
+   if (ISA_INST_I_IMM12(instr) == 0)
+      return snprintf(out, bufsz, "ECALL");
+   if (ISA_INST_I_IMM12(instr) == 1)
+      return snprintf(out, bufsz, "EBREAK");
+   return isaDisassembleIllegal(instr, out, bufsz);
 }
 

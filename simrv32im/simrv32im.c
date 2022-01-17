@@ -3,33 +3,19 @@
 #include <stdio.h>
 #include "cpu.h"
 #include "memory.h"
+#include "loader.h"
+#include "supervisor.h"
 
 
 int main(int argc, char *argv[])
 {
-   FILE *fpIn;
-   size_t size, szp;
-   t_cpuStatus status;
-   int i;
+   t_svStatus status;
 
-   fpIn = fopen(argv[1], "rb");
-   fseeko(fpIn, 0, SEEK_END);
-   size = ftello(fpIn);
-   fseeko(fpIn, 0, SEEK_SET);
+   ldrLoadBinary(argv[1], 0);
 
-   memMapArea(0, size);
-   for (szp = 0; szp < size; szp++) {
-      uint8_t v;
-      fread(&v, 1, 1, fpIn);
-      memWrite8(szp, v);
-   }
-
-   cpuReset(0);
-   status = CPU_STATUS_OK;
+   status = svInit();
    while (status == CPU_STATUS_OK) {
-      status = cpuTick();
-      printf("status = %d, pc = %08x\n", status, cpuGetRegister(CPU_REG_PC));
-
+      status = svVMTick();
    }
    return 0;
 }

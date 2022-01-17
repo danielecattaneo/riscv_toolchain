@@ -41,6 +41,17 @@ void cpuReset(t_cpuRegValue pcValue)
 }
 
 
+t_cpuStatus cpuClearLastFault(void)
+{
+   if (lastStatus == CPU_STATUS_ILL_INST_FAULT || 
+         lastStatus == CPU_STATUS_EBREAK_TRAP || 
+         lastStatus == CPU_STATUS_ECALL_TRAP)
+      cpuPC += 4;
+   lastStatus = CPU_STATUS_OK;
+   return lastStatus;
+}
+
+
 t_cpuStatus cpuExecuteLOAD(uint32_t instr);
 t_cpuStatus cpuExecuteOPIMM(uint32_t instr);
 t_cpuStatus cpuExecuteAUIPC(uint32_t instr);
@@ -50,6 +61,7 @@ t_cpuStatus cpuExecuteLUI(uint32_t instr);
 t_cpuStatus cpuExecuteBRANCH(uint32_t instr);
 t_cpuStatus cpuExecuteJALR(uint32_t instr);
 t_cpuStatus cpuExecuteJAL(uint32_t instr);
+t_cpuStatus cpuExecuteSYSTEM(uint32_t instr);
 
 t_cpuStatus cpuTick(void)
 {
@@ -65,8 +77,13 @@ t_cpuStatus cpuTick(void)
       lastStatus = CPU_STATUS_MEMORY_FAULT;
       return lastStatus;
    }
+   /*
    isaDisassemble(nextInst, disasm, 80);
    printf("%08x: %s (%08x)\n", cpuPC, disasm, nextInst);
+   for (int i=0; i<32; i++)
+      printf("x%d=%08x ", i, cpuRegs[i]);
+   printf("\n");
+   */
    
    switch (ISA_INST_OPCODE(nextInst)) {
       case ISA_INST_OPCODE_LOAD:
@@ -95,6 +112,9 @@ t_cpuStatus cpuTick(void)
          break;
       case ISA_INST_OPCODE_JAL:
          lastStatus = cpuExecuteJAL(nextInst);
+         break;
+      case ISA_INST_OPCODE_SYSTEM:
+         lastStatus = cpuExecuteSYSTEM(nextInst);
          break;
       default:
          lastStatus = CPU_STATUS_ILL_INST_FAULT;
@@ -363,4 +383,15 @@ t_cpuStatus cpuExecuteJAL(uint32_t instr)
    cpuRegs[rd] = cpuPC + 4;
    cpuPC += offs;
    return CPU_STATUS_OK;
+}
+
+t_cpuStatus cpuExecuteSYSTEM(uint32_t instr)
+{
+   if (ISA_INST_FUNCT3(instr) != 0)
+      return CPU_STATUS_ILL_INST_FAULT;
+   if (ISA_INST_I_IMM12(instr) == 0)
+      return CPU_STATUS_ECALL_TRAP;
+   if (ISA_INST_I_IMM12(instr) == 1)
+      return CPU_STATUS_EBREAK_TRAP;
+   return CPU_STATUS_ILL_INST_FAULT;
 }
