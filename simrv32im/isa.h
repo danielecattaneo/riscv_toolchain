@@ -9,7 +9,7 @@ typedef uint32_t t_isaXSize;
 typedef int32_t t_isaInt;
 typedef uint32_t t_isaUInt;
 
-#define SRA(x, amt) (((x)>>(amt)) | (((x)<0)?(((1<<(amt))-1)<<(32-(amt))):0))
+#define SRA(x, amt) (((x) >> (amt)) | (((x)&(1<<31)) ? (((1<<(amt))-1)<<(32-(amt))):0))
 #define SEXT(x, s)  ((x) | (((x) & (1<<((s)-1))) ? ((uint32_t)-1)<<(s) : 0))
 
 #define BITS(x, a, b)      (((x) >> (a)) & (((uint32_t)1 << ((b) - (a))) - 1))

@@ -79,10 +79,10 @@ t_cpuStatus cpuTick(void)
    }
    /*
    isaDisassemble(nextInst, disasm, 80);
-   printf("%08x: %s (%08x)\n", cpuPC, disasm, nextInst);
+   fprintf(stderr, "%08x: %s (%08x)\n", cpuPC, disasm, nextInst);
    for (int i=0; i<32; i++)
-      printf("x%d=%08x ", i, cpuRegs[i]);
-   printf("\n");
+      fprintf(stderr, "x%d=%08x ", i, cpuRegs[i]);
+   fprintf(stderr, "\n");
    */
    
    switch (ISA_INST_OPCODE(nextInst)) {
