@@ -263,59 +263,98 @@ t_cpuStatus cpuExecuteOP(uint32_t instr)
    int rs1 = ISA_INST_RS1(instr);
    int rs2 = ISA_INST_RS2(instr);
 
-   switch (ISA_INST_FUNCT3(instr)) {
-      case 0: /* ADD / SUB */
-         if (ISA_INST_FUNCT7(instr) == 0x00)
+   if (ISA_INST_FUNCT7(instr) == 0x00) {
+      switch (ISA_INST_FUNCT3(instr)) {
+         case 0: /* ADD */
             cpuRegs[rd] = cpuRegs[rs1] + cpuRegs[rs2];
-         else if (ISA_INST_FUNCT7(instr) == 0x20)
-            cpuRegs[rd] = cpuRegs[rs1] - cpuRegs[rs2];
-         else
-            return CPU_STATUS_ILL_INST_FAULT;
-         break;
-      case 1: /* SLL */
-         if (ISA_INST_FUNCT7(instr) == 0x00)
+            break;
+         case 1: /* SLL */
             cpuRegs[rd] = cpuRegs[rs1] << (cpuRegs[rs2] & 0x1F);
-         else
-            return CPU_STATUS_ILL_INST_FAULT;
-         break;
-      case 2: /* SLT */
-         if (ISA_INST_FUNCT7(instr) == 0x00)
+            break;
+         case 2: /* SLT */
             cpuRegs[rd] = ((int32_t)cpuRegs[rs1]) < ((int32_t)cpuRegs[rs2]);
-         else
-            return CPU_STATUS_ILL_INST_FAULT;
-         break;
-      case 3: /* SLTU */
-         if (ISA_INST_FUNCT7(instr) == 0x00)
+            break;
+         case 3: /* SLTU */
             cpuRegs[rd] = cpuRegs[rs1] < cpuRegs[rs2];
-         else
-            return CPU_STATUS_ILL_INST_FAULT;
-         break;
-      case 4: /* XOR */
-         if (ISA_INST_FUNCT7(instr) == 0x00)
+            break;
+         case 4: /* XOR */
             cpuRegs[rd] = cpuRegs[rs1] ^ cpuRegs[rs2];
-         else
-            return CPU_STATUS_ILL_INST_FAULT;
-         break;
-      case 5: /* SRL / SRA */
-         if (ISA_INST_FUNCT7(instr) == 0x00)
+            break;
+         case 5: /* SRL */
             cpuRegs[rd] = cpuRegs[rs1] >> (cpuRegs[rs2] & 0x1F);
-         else if (ISA_INST_FUNCT7(instr) == 0x20)
-            cpuRegs[rd] = SRA(cpuRegs[rs1], (cpuRegs[rs2] & 0x1F));
-         else
-            return CPU_STATUS_ILL_INST_FAULT;
-         break;
-      case 6: /* OR */
-         if (ISA_INST_FUNCT7(instr) == 0x00)
+            break;
+         case 6: /* OR */
             cpuRegs[rd] = cpuRegs[rs1] | cpuRegs[rs2];
-         else
-            return CPU_STATUS_ILL_INST_FAULT;
-         break;
-      case 7: /* AND */
-         if (ISA_INST_FUNCT7(instr) == 0x00)
+            break;
+         case 7: /* AND */
             cpuRegs[rd] = cpuRegs[rs1] & cpuRegs[rs2];
-         else
+            break;
+      }
+   } else if (ISA_INST_FUNCT7(instr) == 0x20) {
+      switch (ISA_INST_FUNCT3(instr)) {
+         case 0: /* SUB */
+            cpuRegs[rd] = cpuRegs[rs1] - cpuRegs[rs2];
+            break;
+         case 1:
+         case 2:
+         case 3:
+         case 4:
             return CPU_STATUS_ILL_INST_FAULT;
-         break;
+         case 5: /* SRA */
+            cpuRegs[rd] = SRA(cpuRegs[rs1], (cpuRegs[rs2] & 0x1F));
+            break;
+         case 6:
+         case 7:
+            return CPU_STATUS_ILL_INST_FAULT;
+      }
+   } else if (ISA_INST_FUNCT7(instr) == 0x01) {
+      switch (ISA_INST_FUNCT3(instr)) {
+         case 0: /* MUL */
+            cpuRegs[rd] = cpuRegs[rs1] * cpuRegs[rs2];
+            break;
+         case 1: /* MULH */
+            cpuRegs[rd] = (uint32_t)(((int64_t)((int32_t)cpuRegs[rs1]) * 
+                                      (int64_t)((int32_t)cpuRegs[rs2])) >> 32);
+            break;
+         case 2: /* MULHSU */
+            cpuRegs[rd] = (uint32_t)(((int64_t)((int32_t)cpuRegs[rs1]) * 
+                                      (int64_t)(cpuRegs[rs2])) >> 32);
+            break;
+         case 3: /* MULHU */
+            cpuRegs[rd] = (uint32_t)(((uint64_t)(cpuRegs[rs1]) * 
+                                      (uint64_t)(cpuRegs[rs2])) >> 32);
+            break;
+         case 4: /* DIV */
+            if (cpuRegs[rs2] == 0)
+               cpuRegs[rd] = 0xFFFFFFFF;
+            else if (cpuRegs[rs1] == 0x80000000 && cpuRegs[rs2] == 0xFFFFFFFF)
+               cpuRegs[rd] = 0x80000000;
+            else
+               cpuRegs[rd] = (int32_t)cpuRegs[rs1] / (int32_t)cpuRegs[rs2];
+            break;
+         case 5: /* DIVU */
+            if (cpuRegs[rs2] == 0)
+               cpuRegs[rd] = 0xFFFFFFFF;
+            else
+               cpuRegs[rd] = cpuRegs[rs1] / cpuRegs[rs2];
+            break;
+         case 6: /* REM */
+            if (cpuRegs[rs2] == 0)
+               cpuRegs[rd] = cpuRegs[rs1];
+            else if (cpuRegs[rs1] == 0x80000000 && cpuRegs[rs2] == 0xFFFFFFFF)
+               cpuRegs[rd] = 0;
+            else
+               cpuRegs[rd] = (int32_t)cpuRegs[rs1] % (int32_t)cpuRegs[rs2];
+            break;
+         case 7: /* REMU */
+            if (cpuRegs[rs2] == 0)
+               cpuRegs[rd] = cpuRegs[rs1];
+            else
+               cpuRegs[rd] = cpuRegs[rs1] % cpuRegs[rs2];
+            break;
+      }
+   } else {
+      return CPU_STATUS_ILL_INST_FAULT;
    }
 
    cpuPC += 4;

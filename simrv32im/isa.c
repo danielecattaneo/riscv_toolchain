@@ -63,23 +63,26 @@ int isaDisassembleOP(uint32_t instr, char *out, int bufsz)
    int rd = ISA_INST_RD(instr);
    int rs1 = ISA_INST_RS1(instr);
    int rs2 = ISA_INST_RS2(instr);
-   const char *mnems[] = {
+   const char *mnems00[] = {
          "ADD", "SLL", "SLT", "SLTU", "XOR", "SRL", "OR", "AND"};
+   const char *mnems20[] = {
+         "SUB", NULL, NULL, NULL, NULL, "SRA", NULL, NULL};
+   const char *mnems01[] = {
+         "MUL", "MULH", "MULHSU", "MULHU", "DIV", "DIVU", "REM", "REMU"};
    const char *mnem;
 
-   if (ISA_INST_FUNCT7(instr) == 0x20) {
-      if (ISA_INST_FUNCT3(instr) == 0)
-         mnem = "SUB";
-      else if (ISA_INST_FUNCT3(instr) == 5)
-         mnem = "SRA";
-      else
-         return isaDisassembleIllegal(instr, out, bufsz);
-   } else if (ISA_INST_FUNCT7(instr) == 0x00) {
-      mnem = mnems[ISA_INST_FUNCT3(instr)];
+   if (ISA_INST_FUNCT7(instr) == 0x00) {
+      mnem = mnems00[ISA_INST_FUNCT3(instr)];
+   } else if (ISA_INST_FUNCT7(instr) == 0x20) {
+      mnem = mnems20[ISA_INST_FUNCT3(instr)];
+   } else if (ISA_INST_FUNCT7(instr) == 0x01) {
+      mnem = mnems01[ISA_INST_FUNCT3(instr)];
    } else
       return isaDisassembleIllegal(instr, out, bufsz);
 
-   return snprintf(out, bufsz, "%s x%d, x%d, x%d", mnem, rd, rs1, rs2);
+   if (mnem != NULL)
+      return snprintf(out, bufsz, "%s x%d, x%d, x%d", mnem, rd, rs1, rs2);
+   return isaDisassembleIllegal(instr, out, bufsz);
 }
 
 int isaDisassembleOPIMM(uint32_t instr, char *out, int bufsz)
