@@ -189,7 +189,7 @@ t_cpuStatus cpuExecuteOPIMM(uint32_t instr)
             return CPU_STATUS_ILL_INST_FAULT;
          break;
       case 2: /* SLTI */
-         cpuRegs[rd] = ((int32_t)cpuRegs[rs1]) < ISA_INST_I_IMM12_SEXT(instr);
+         cpuRegs[rd] = ((int32_t)cpuRegs[rs1]) < ((int32_t)ISA_INST_I_IMM12_SEXT(instr));
          break;
       case 3: /* SLTIU */
          cpuRegs[rd] = cpuRegs[rs1] < ISA_INST_I_IMM12(instr);
