@@ -40,12 +40,12 @@ int isaDisassemble(uint32_t instr, char *out, int bufsz)
          return snprintf(out, bufsz, "JALR x%d, x%d, *%+"PRId32, rd, rs1, imm);
       case ISA_INST_OPCODE_LUI:
          rd = ISA_INST_RD(instr);
-         imm = ISA_INST_U_IMM20_SEXT(instr);
-         return snprintf(out, bufsz, "LUI x%d, 0x%08"PRIx32, rd, imm << 12);
+         imm = ISA_INST_U_IMM20(instr);
+         return snprintf(out, bufsz, "LUI x%d, 0x%05"PRIx32, rd, imm);
       case ISA_INST_OPCODE_AUIPC:
          rd = ISA_INST_RD(instr);
-         imm = ISA_INST_U_IMM20_SEXT(instr);
-         return snprintf(out, bufsz, "AUIPC x%d, 0x%08"PRIx32, rd, imm << 12);
+         imm = ISA_INST_U_IMM20(instr);
+         return snprintf(out, bufsz, "AUIPC x%d, 0x%05"PRIx32, rd, imm);
       case ISA_INST_OPCODE_SYSTEM:
          return isaDisassembleSYSTEM(instr, out, bufsz);
    }
@@ -125,7 +125,7 @@ int isaDisassembleLOAD(uint32_t instr, char *out, int bufsz)
    if (mnem == NULL)
       return isaDisassembleIllegal(instr, out, bufsz);
 
-   return snprintf(out, bufsz, "%s x%d, x%d, %"PRId32, mnem, rd, rs1, imm);
+   return snprintf(out, bufsz, "%s x%d, %"PRId32"(x%d)", mnem, rd, imm, rs1);
 }
 
 int isaDisassembleSTORE(uint32_t instr, char *out, int bufsz)
@@ -141,7 +141,7 @@ int isaDisassembleSTORE(uint32_t instr, char *out, int bufsz)
    if (mnem == NULL)
       return isaDisassembleIllegal(instr, out, bufsz);
 
-   return snprintf(out, bufsz, "%s x%d, x%d, %"PRId32, mnem, rs1, rs2, imm);
+   return snprintf(out, bufsz, "%s x%d, %"PRId32"(x%d)", mnem, rs2, imm, rs1);
 }
 
 int isaDisassembleBRANCH(uint32_t instr, char *out, int bufsz)
