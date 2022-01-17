@@ -131,7 +131,7 @@ t_cpuStatus cpuExecuteLOAD(uint32_t instr)
          memStatus = memRead32(addr, &tmp32);
          if (memStatus != MEM_NO_ERROR)
             return CPU_STATUS_MEMORY_FAULT;
-         cpuRegs[rd] = (int32_t)tmp32;
+         cpuRegs[rd] = tmp32;
          break;
       case 4: /* LBU */
          memStatus = memRead8(addr, &tmp8);
@@ -225,7 +225,7 @@ t_cpuStatus cpuExecuteSTORE(uint32_t instr)
             return CPU_STATUS_MEMORY_FAULT;
          break;
       case 2: /* SW */
-         memStatus = memWrite8(addr, cpuRegs[rs2]);
+         memStatus = memWrite32(addr, cpuRegs[rs2]);
          if (memStatus != MEM_NO_ERROR)
             return CPU_STATUS_MEMORY_FAULT;
          break;
@@ -348,11 +348,11 @@ t_cpuStatus cpuExecuteJALR(uint32_t instr)
 {
    int32_t offs = ISA_INST_I_IMM12_SEXT(instr);
    int rd = ISA_INST_RD(instr);
+   int rs1 = ISA_INST_RS1(instr);
    if (ISA_INST_FUNCT3(instr) != 0)
       return CPU_STATUS_ILL_INST_FAULT;
    cpuRegs[rd] = cpuPC + 4;
-   cpuPC += offs;
-   cpuPC &= ~1; /* clear bit zero as suggested by the spec */
+   cpuPC = (cpuRegs[rs1] + offs) & ~1; /* clear bit zero as suggested by the spec */
    return CPU_STATUS_OK;
 }
 
