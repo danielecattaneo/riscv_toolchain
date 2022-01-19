@@ -5,6 +5,7 @@
 #include "memory.h"
 #include "loader.h"
 #include "supervisor.h"
+#include "debugger.h"
 
 
 int main(int argc, char *argv[])
@@ -14,6 +15,8 @@ int main(int argc, char *argv[])
    ldrLoadBinary(argv[1], 0);
 
    status = svInit();
+   dbgEnable();
+   dbgRequestEnter();
    while (status == SV_STATUS_RUNNING) {
       status = svVMTick();
    }

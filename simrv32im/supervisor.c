@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "supervisor.h"
 #include "memory.h"
+#include "debugger.h"
 
 
 const t_memAddress svStackTop = 0x80000000;
@@ -75,26 +76,32 @@ t_svStatus svVMTick(void)
 {
    int stop;
    t_cpuStatus cpuStatus;
+   t_dbgResult dbgRes;
    t_svStatus status = SV_STATUS_RUNNING;
 
-   cpuStatus = cpuTick();
-   if (cpuStatus == CPU_STATUS_MEMORY_FAULT) {
-      svExpandStack();
-      cpuClearLastFault();
+   dbgRes = dbgTick();
+   if (dbgRes == DBG_RESULT_EXIT) {
+      status = SV_STATUS_KILLED;
+   } else {
       cpuStatus = cpuTick();
-   }
-   if (cpuStatus == CPU_STATUS_ECALL_TRAP) {
-      status = svHandleEnvCall();
-      if (status == SV_STATUS_RUNNING)
-         cpuStatus = cpuClearLastFault();
-   } else if (cpuStatus == CPU_STATUS_EBREAK_TRAP) {
-      cpuStatus = cpuClearLastFault();
+      if (cpuStatus == CPU_STATUS_MEMORY_FAULT) {
+         svExpandStack();
+         cpuClearLastFault();
+         cpuStatus = cpuTick();
+      }
+
+      if (cpuStatus == CPU_STATUS_ECALL_TRAP) {
+         status = svHandleEnvCall();
+         if (status == SV_STATUS_RUNNING)
+            cpuStatus = cpuClearLastFault();
+      } else if (cpuStatus == CPU_STATUS_EBREAK_TRAP)
+         status = SV_STATUS_ILL_INST_FAULT;
+      else if (cpuStatus == CPU_STATUS_ILL_INST_FAULT)
+         status = SV_STATUS_ILL_INST_FAULT;
+      else if (cpuStatus == CPU_STATUS_MEMORY_FAULT)
+         status = SV_STATUS_MEMORY_FAULT;
    }
 
-   if (cpuStatus == CPU_STATUS_ILL_INST_FAULT)
-      status = SV_STATUS_ILL_INST_FAULT;
-   else if (cpuStatus == CPU_STATUS_MEMORY_FAULT)
-      status = SV_STATUS_MEMORY_FAULT;
    return status;
 }
 
