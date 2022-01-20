@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <inttypes.h>
 #include "cpu.h"
 #include "debugger.h"
 
@@ -155,16 +156,16 @@ t_dbgTrigType dbgCheckTrigger(t_dbgBreakpointId *outId)
 }
 
 
-void dbgCmdSkipWhitespace(char **in)
+void dbgParserSkipWhitespace(char **in)
 {
    while (**in != '\0' && isspace(**in))
       (*in)++;
 }
 
-int dbgCmdAcceptKeyword(const char *word, char **in)
+int dbgParserAcceptKeyword(const char *word, char **in)
 {
    char *p;
-   dbgCmdSkipWhitespace(in);
+   dbgParserSkipWhitespace(in);
    
    p = *in;
    while (*word != '\0' && *word == *p) {
@@ -184,6 +185,10 @@ enum {
    DBG_IF_EXIT
 };
 
+void dbgCmdPrintCpuStatus(void);
+void dbgCmdDisassemble(char *args);
+void dbgCmdMemDump(char *args);
+
 t_dbgResult dbgInterface(void)
 {
    char input[80];
@@ -195,27 +200,36 @@ t_dbgResult dbgInterface(void)
       return DBG_IF_EXIT;
    
    nextTok = input;
-   if (dbgCmdAcceptKeyword("q", &nextTok)) {
+   if (dbgParserAcceptKeyword("q", &nextTok)) {
       return DBG_IF_EXIT;
-   } else if (dbgCmdAcceptKeyword("c", &nextTok)) {
+   } else if (dbgParserAcceptKeyword("c", &nextTok)) {
       return DBG_IF_STOP_DEBUG;
-   } else if (dbgCmdAcceptKeyword("s", &nextTok)) {
+   } else if (dbgParserAcceptKeyword("s", &nextTok)) {
       dbgStepInEnabled = 1;
       return DBG_IF_STOP_DEBUG;
+   } else if (dbgParserAcceptKeyword("v", &nextTok)) {
+      dbgCmdPrintCpuStatus();
+   } else if (dbgParserAcceptKeyword("u", &nextTok)) {
+      dbgCmdDisassemble(nextTok);
+   } else if (dbgParserAcceptKeyword("d", &nextTok)) {
+      dbgCmdMemDump(nextTok);
    } else if (*nextTok != '\0') {
       puts(
 "Debugger commands:\n"
-"q          Exit the simulator\n"
-"c          Exit the debugger and continue (up to the next breakpoint if any)\n"
-"s          Step in\n"
+"q                  Exit the simulator\n"
+"c                  Exit the debugger and continue (up to the next breakpoint\n"
+"                     if any)\n"
+"s                  Step in\n"
+"v                  Print current CPU state\n"
+"u <start> <length> Disassemble 'length' instructions from address 'start'\n"
+"d <start> <length> Dump 'length' bytes from address 'start'"
       );
    }
 
    return DBG_IF_CONT_DEBUG;
 }
 
-
-void dbgPrintCpuStatus(void)
+void dbgCmdPrintCpuStatus(void)
 {
    t_cpuRegID r;
    t_cpuRegValue pc;
@@ -234,6 +248,70 @@ void dbgPrintCpuStatus(void)
       else
          fputc(' ', stderr);
    }
+}
+
+void dbgCmdDisassemble(char *args)
+{
+   unsigned long addr, len, i;
+   char buffer[80];
+   char *arg2, *arg3;
+
+   addr = strtoul(args, &arg2, 0);
+   if (args == arg2) {
+      fprintf(stderr, "First argument is not a valid number\n");
+   }
+   len = strtoul(arg2, &arg3, 0);
+   if (arg2 == arg3) {
+      fprintf(stderr, "Second argument is not a valid number\n");
+   }
+
+   for (int i=0; i<len; i++) {
+      t_memAddress curaddr = addr + 4*i;
+      uint32_t instr = memDebugRead32(curaddr, NULL);
+      isaDisassemble(instr, buffer, 80);
+      fprintf(stderr, "%08"PRIx32":  %08"PRIx32"  %s\n", 
+            curaddr, instr, buffer);
+   }
+
+   return;
+error:
+   fprintf(stderr, "Arguments to the command invalid\n");
+}
+
+void dbgCmdMemDump(char *args)
+{
+   unsigned long addr, len, i;
+   char buffer[80];
+   char *arg2, *arg3;
+
+   addr = strtoul(args, &arg2, 0);
+   if (args == arg2) {
+      fprintf(stderr, "First argument is not a valid number\n");
+   }
+   len = strtoul(arg2, &arg3, 0);
+   if (arg2 == arg3) {
+      fprintf(stderr, "Second argument is not a valid number\n");
+   }
+
+   if (len > 0) {
+      fprintf(stderr, "%08"PRIx32": ", (t_memAddress)addr);
+      for (int i=0; i<len; i++) {
+         t_memAddress curaddr = addr + i;
+         uint8_t byte = memDebugRead8(curaddr, NULL);
+         fprintf(stderr, "%02"PRIx8, byte);
+         if ((i+1) % 16 == 0 || (i+1) == len)
+            fputc('\n', stderr);
+         else
+            fputc(' ', stderr);
+         if ((i+1) % 16 == 0 && (i+1) < len)
+            fprintf(stderr, "%08"PRIx32": ", curaddr+1);
+      }
+   } else
+      fprintf(stderr, "Length is zero\n");
+
+   return;
+error:
+   fprintf(stderr, "Arguments to the command invalid\n");
 }
 
 
@@ -256,7 +334,7 @@ t_dbgResult dbgTick(void)
    dbgStepOverEnabled = 0;
    dbgUserRequestsEnter = 0;
 
-   dbgPrintCpuStatus();
+   dbgCmdPrintCpuStatus();
 
    do {
       dbgRes = dbgInterface();
