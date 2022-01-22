@@ -185,6 +185,7 @@ enum {
    DBG_IF_EXIT
 };
 
+void dbgCmdStepOver(void);
 void dbgCmdPrintCpuStatus(void);
 void dbgCmdDisassemble(char *args);
 void dbgCmdMemDump(char *args);
@@ -207,6 +208,9 @@ t_dbgResult dbgInterface(void)
    } else if (dbgParserAcceptKeyword("s", &nextTok)) {
       dbgStepInEnabled = 1;
       return DBG_IF_STOP_DEBUG;
+   } else if (dbgParserAcceptKeyword("n", &nextTok)) {
+      dbgCmdStepOver();
+      return DBG_IF_STOP_DEBUG;
    } else if (dbgParserAcceptKeyword("v", &nextTok)) {
       dbgCmdPrintCpuStatus();
    } else if (dbgParserAcceptKeyword("u", &nextTok)) {
@@ -220,6 +224,7 @@ t_dbgResult dbgInterface(void)
 "c                  Exit the debugger and continue (up to the next breakpoint\n"
 "                     if any)\n"
 "s                  Step in\n"
+"n                  Step over\n"
 "v                  Print current CPU state\n"
 "u <start> <length> Disassemble 'length' instructions from address 'start'\n"
 "d <start> <length> Dump 'length' bytes from address 'start'"
@@ -227,6 +232,25 @@ t_dbgResult dbgInterface(void)
    }
 
    return DBG_IF_CONT_DEBUG;
+}
+
+void dbgCmdStepOver(void)
+{
+   t_cpuRegValue pc;
+   t_isaUInt inst;
+
+   pc = cpuGetRegister(CPU_REG_PC);
+   inst = memDebugRead32(pc, NULL);
+   if ((ISA_INST_OPCODE(inst) == ISA_INST_OPCODE_JAL || 
+         (ISA_INST_OPCODE(inst) == ISA_INST_OPCODE_JALR && 
+            ISA_INST_FUNCT3(inst) == 0)) &&
+         ISA_INST_RD(inst) == CPU_REG_RA) {
+      /* the instruction is presumably a subroutine call */
+      dbgStepOverEnabled = 1;
+      dbgStepOverAddr = pc + 4;
+   } else {
+      dbgStepInEnabled = 1;
+   }
 }
 
 void dbgCmdPrintCpuStatus(void)
