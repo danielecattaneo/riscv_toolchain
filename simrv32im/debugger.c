@@ -62,7 +62,7 @@ t_dbgBreakpointId dbgAddBreakpoint(t_memAddress address)
 }
 
 
-void dbgRemoveBreakpoint(t_dbgBreakpointId brkId)
+int dbgRemoveBreakpoint(t_dbgBreakpointId brkId)
 {
    t_dbgBreakpoint *prev = NULL;
    t_dbgBreakpoint *cur = dbgBreakpointList;
@@ -71,13 +71,14 @@ void dbgRemoveBreakpoint(t_dbgBreakpointId brkId)
       cur = cur->next;
    }
    if (!cur)
-      return;
+      return 1;
    if (prev) {
       prev->next = cur->next;
    } else {
       dbgBreakpointList = cur->next;
    }
    free(cur);
+   return 0;
 }
 
 
@@ -143,8 +144,8 @@ t_dbgTrigType dbgCheckTrigger(t_dbgBreakpointId *outId)
    if (dbgStepOverEnabled && dbgStepOverAddr == curPc)
       return DBG_TRIG_TYPE_STEPOVER;
    
-   state = dbgEnumerateBreakpoints(NULL, outId, &bpAddr);
-   while (state) {
+   state = dbgEnumerateBreakpoints(DBG_ENUM_BREAKPOINT_START, outId, &bpAddr);
+   while (state != DBG_ENUM_BREAKPOINT_STOP) {
       if (bpAddr == curPc)
          break;
       state = dbgEnumerateBreakpoints(state, outId, &bpAddr);
@@ -185,7 +186,11 @@ enum {
    DBG_IF_EXIT
 };
 
+void dbgCmdHelp(void);
 void dbgCmdStepOver(void);
+void dbgCmdAddBreakpoint(char *args);
+void dbgCmdRemoveBreakpoint(char *args);
+void dbgCmdPrintBreakpoints(void);
 void dbgCmdPrintCpuStatus(void);
 void dbgCmdDisassemble(char *args);
 void dbgCmdMemDump(char *args);
@@ -211,6 +216,12 @@ t_dbgResult dbgInterface(void)
    } else if (dbgParserAcceptKeyword("n", &nextTok)) {
       dbgCmdStepOver();
       return DBG_IF_STOP_DEBUG;
+   } else if (dbgParserAcceptKeyword("bl", &nextTok)) {
+      dbgCmdPrintBreakpoints();
+   } else if (dbgParserAcceptKeyword("br", &nextTok)) {
+      dbgCmdRemoveBreakpoint(nextTok);
+   } else if (dbgParserAcceptKeyword("b", &nextTok)) {
+      dbgCmdAddBreakpoint(nextTok);
    } else if (dbgParserAcceptKeyword("v", &nextTok)) {
       dbgCmdPrintCpuStatus();
    } else if (dbgParserAcceptKeyword("u", &nextTok)) {
@@ -218,20 +229,26 @@ t_dbgResult dbgInterface(void)
    } else if (dbgParserAcceptKeyword("d", &nextTok)) {
       dbgCmdMemDump(nextTok);
    } else if (*nextTok != '\0') {
-      puts(
-"Debugger commands:\n"
-"q                  Exit the simulator\n"
-"c                  Exit the debugger and continue (up to the next breakpoint\n"
-"                     if any)\n"
-"s                  Step in\n"
-"n                  Step over\n"
-"v                  Print current CPU state\n"
-"u <start> <length> Disassemble 'length' instructions from address 'start'\n"
-"d <start> <length> Dump 'length' bytes from address 'start'"
-      );
+      dbgCmdHelp();
    }
 
    return DBG_IF_CONT_DEBUG;
+}
+
+void dbgCmdHelp(void)
+{
+   puts("Debugger commands:");
+   puts("q               Exit the simulator");
+   puts("c               Exit the debugger and continue (up to the next");
+   puts("                  breakpoint if any)");
+   puts("s               Step in");
+   puts("n               Step over");
+   puts("b <address>     Add a breakpoint at the specified address");
+   puts("bl              List all breakpoints");
+   puts("br <id>         Remove breakpoint number <id>");
+   puts("v               Print current CPU state");
+   puts("u <start> <len> Disassemble 'len' instructions from address 'start'");
+   puts("d <start> <len> Dump 'len' bytes from address 'start'");
 }
 
 void dbgCmdStepOver(void)
@@ -250,6 +267,58 @@ void dbgCmdStepOver(void)
       dbgStepOverAddr = pc + 4;
    } else {
       dbgStepInEnabled = 1;
+   }
+}
+
+void dbgCmdAddBreakpoint(char *args)
+{
+   unsigned long addr;
+   char *arg2;
+   t_dbgBreakpointId id;
+
+   addr = strtoul(args, &arg2, 0);
+   if (args == arg2) {
+      fprintf(stderr, "First argument is not a valid number\n");
+      return;
+   }
+
+   id = dbgAddBreakpoint((t_memAddress)addr);
+   fprintf(stderr, "Added breakpoint %d at address 0x%08lx\n", id, addr);
+}
+
+void dbgCmdRemoveBreakpoint(char *args)
+{
+   unsigned long bpid;
+   char *arg2;
+   int error;
+
+   bpid = strtoul(args, &arg2, 0);
+   if (args == arg2) {
+      fprintf(stderr, "First argument is not a valid number\n");
+      return;
+   }
+
+   error = dbgRemoveBreakpoint((t_dbgBreakpointId)bpid);
+   if (error == 0)
+      fprintf(stderr, "Removed breakpoint %lu\n", bpid);
+   else
+      fprintf(stderr, "Breakpoint %lu not found\n", bpid);
+}
+
+void dbgCmdPrintBreakpoints(void)
+{
+   t_dbgEnumBreakpointState enumState;
+   t_dbgBreakpointId id;
+   t_memAddress addr;
+
+   enumState = dbgEnumerateBreakpoints(DBG_ENUM_BREAKPOINT_START, &id, &addr);
+   if (enumState == DBG_ENUM_BREAKPOINT_STOP) {
+      fprintf(stderr, "No breakpoints defined\n");
+   } else {
+      while (enumState != DBG_ENUM_BREAKPOINT_STOP) {
+         fprintf(stderr, "Breakpoint %-8d Address 0x%08x\n", id, addr);
+         enumState = dbgEnumerateBreakpoints(enumState, &id, &addr);
+      }
    }
 }
 

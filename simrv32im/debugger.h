@@ -15,6 +15,7 @@ typedef int t_dbgBreakpointId;
 
 typedef void *t_dbgEnumBreakpointState;
 #define DBG_ENUM_BREAKPOINT_START ((t_dbgEnumBreakpointState)NULL)
+#define DBG_ENUM_BREAKPOINT_STOP ((t_dbgEnumBreakpointState)NULL)
 
 
 int dbgEnable(void);
@@ -23,7 +24,7 @@ int dbgDisable(void);
 void dbgRequestEnter(void);
 
 t_dbgBreakpointId dbgAddBreakpoint(t_memAddress address);
-void dbgRemoveBreakpoint(t_dbgBreakpointId brkId);
+int dbgRemoveBreakpoint(t_dbgBreakpointId brkId);
 t_memAddress dbgGetBreakpoint(t_dbgBreakpointId brkId);
 t_dbgEnumBreakpointState dbgEnumerateBreakpoints(t_dbgEnumBreakpointState state,
       t_dbgBreakpointId *outId, t_memAddress *outAddress);
