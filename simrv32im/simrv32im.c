@@ -11,6 +11,7 @@
 
 void usage(const char *name)
 {
+   puts("ACSE RISC-V RV32IM simulator, (c) 2022 Politecnico di Milano");
    printf("usage: %s [options] executable\n\n", name);
    puts("Options:");
    puts("  -d, --debug           Enters debug mode before starting execution");
@@ -32,6 +33,7 @@ int main(int argc, char *argv[])
    static const struct option options[] = {
       { "debug",     no_argument,       NULL, 'd' },
       { "entry",     required_argument, NULL, 'e' },
+      { "help",      no_argument,       NULL, 'h' },
       { "load-addr", required_argument, NULL, 'l' },
    };
 
@@ -40,7 +42,7 @@ int main(int argc, char *argv[])
    entry = 0;
    load = 0;
 
-   while ((ch = getopt_long(argc, argv, "de:l:", options, NULL)) != -1) {
+   while ((ch = getopt_long(argc, argv, "de:hl:", options, NULL)) != -1) {
       switch (ch) {
          case 'd':
             debug = 1;
@@ -59,7 +61,9 @@ int main(int argc, char *argv[])
                return 1;
             }
             break;
-         
+         case 'h':
+            usage(name);
+            return 0;
          default:
             usage(name);
             return 1;
