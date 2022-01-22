@@ -283,10 +283,12 @@ void dbgCmdDisassemble(char *args)
    addr = strtoul(args, &arg2, 0);
    if (args == arg2) {
       fprintf(stderr, "First argument is not a valid number\n");
+      return;
    }
    len = strtoul(arg2, &arg3, 0);
    if (arg2 == arg3) {
       fprintf(stderr, "Second argument is not a valid number\n");
+      return;
    }
 
    for (i=0; i<len; i++) {
@@ -298,8 +300,6 @@ void dbgCmdDisassemble(char *args)
    }
 
    return;
-error:
-   fprintf(stderr, "Arguments to the command invalid\n");
 }
 
 void dbgCmdMemDump(char *args)
@@ -311,10 +311,12 @@ void dbgCmdMemDump(char *args)
    addr = strtoul(args, &arg2, 0);
    if (args == arg2) {
       fprintf(stderr, "First argument is not a valid number\n");
+      return;
    }
    len = strtoul(arg2, &arg3, 0);
    if (arg2 == arg3) {
       fprintf(stderr, "Second argument is not a valid number\n");
+      return;
    }
 
    if (len > 0) {
@@ -334,8 +336,6 @@ void dbgCmdMemDump(char *args)
       fprintf(stderr, "Length is zero\n");
 
    return;
-error:
-   fprintf(stderr, "Arguments to the command invalid\n");
 }
 
 
