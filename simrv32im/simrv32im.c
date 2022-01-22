@@ -15,7 +15,8 @@ void usage(const char *name)
    puts("Options:");
    puts("  -d, --debug           Enters debug mode before starting execution");
    puts("  -e, --entry=ADDR      Force the entry point to ADDR");
-   puts("  -l, --load-addr=ADDR  Sets the executable loading address");
+   puts("  -l, --load-addr=ADDR  Sets the executable loading address (only");
+   puts("                          for executables in raw binary format)");
    puts("  -h, --help            Displays available options");
 }
 
@@ -26,6 +27,8 @@ int main(int argc, char *argv[])
    int ch, debug;
    char *tmpStr, *name;
    t_memAddress entry, load;
+   t_ldrFileType excType;
+   t_ldrError ldrErr;
    static const struct option options[] = {
       { "debug",     no_argument,       NULL, 'd' },
       { "entry",     required_argument, NULL, 'e' },
@@ -72,7 +75,27 @@ int main(int argc, char *argv[])
       fprintf(stderr, "Cannot load more than one file, exiting.\n");
       return 2;
    }
-   ldrLoadBinary(argv[0], load);
+   
+   excType = ldrDetectExecType(argv[0]);
+   if (excType == LDR_FORMAT_BINARY) {
+      ldrErr = ldrLoadBinary(argv[0], load);
+   } else if (excType == LDR_FORMAT_ELF) {
+      ldrErr = ldrLoadELF(argv[0]);
+   } else {
+      fprintf(stderr, "Could not open executable, exiting.\n");
+      return 3;
+   }
+
+   if (ldrErr == LDR_INVALID_ARCH) {
+      fprintf(stderr, "Not a valid RISC-V executable, exiting.\n");
+      return 4;
+   } else if (ldrErr == LDR_INVALID_FORMAT) {
+      fprintf(stderr, "Unsupported executable, exiting.\n");
+      return 5;
+   } else if (ldrErr != LDR_NO_ERROR) {
+      fprintf(stderr, "Error during executable loading, exiting.\n");
+      return 6;
+   }
 
    status = svInit();
    cpuSetRegister(CPU_REG_PC, entry);
