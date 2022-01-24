@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <inttypes.h>
 #include "supervisor.h"
 #include "memory.h"
 #include "debugger.h"
@@ -38,7 +39,9 @@ int svExpandStack(void)
 enum {
    SV_SYSCALL_EXIT    = 93,
    SV_SYSCALL_PUTCHAR = 0x10000,
-   SV_SYSCALL_GETCHAR = 0x10001
+   SV_SYSCALL_GETCHAR = 0x10001,
+   SV_SYSCALL_PUTINT  = 0x10002,
+   SV_SYSCALL_GETINT  = 0x10003
 };
 
 t_svStatus svHandleEnvCall(void)
@@ -56,6 +59,14 @@ t_svStatus svHandleEnvCall(void)
          break;
       case SV_SYSCALL_GETCHAR:
          ret = getchar();
+         cpuSetRegister(CPU_REG_A0, ret);
+         break;
+      case SV_SYSCALL_PUTINT:
+         fprintf(stdout, "%d\n", cpuGetRegister(CPU_REG_A1));
+         break;
+      case SV_SYSCALL_GETINT:
+         fputs("int value? >", stdout);
+         fscanf(stdin, "%"PRId32, &ret);
          cpuSetRegister(CPU_REG_A0, ret);
          break;
       default:
