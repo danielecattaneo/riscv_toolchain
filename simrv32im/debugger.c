@@ -2,6 +2,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <inttypes.h>
+#include <stdarg.h>
 #include "cpu.h"
 #include "debugger.h"
 
@@ -48,6 +49,21 @@ int dbgDisable(void)
 void dbgRequestEnter(void)
 {
    dbgUserRequestsEnter = 1;
+}
+
+
+int dbgPrintf(const char *format, ...)
+{
+   va_list args;
+   int res;
+
+   if (!dbgEnabled)
+      return 0;
+
+   va_start(args, format);
+   res = vfprintf(stderr, format, args);
+   va_end(args);
+   return res;
 }
 
 

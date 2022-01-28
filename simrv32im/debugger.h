@@ -23,6 +23,8 @@ int dbgGetEnabled(void);
 int dbgDisable(void);
 void dbgRequestEnter(void);
 
+int dbgPrintf(const char *format, ...);
+
 t_dbgBreakpointId dbgAddBreakpoint(t_memAddress address);
 int dbgRemoveBreakpoint(t_dbgBreakpointId brkId);
 t_memAddress dbgGetBreakpoint(t_dbgBreakpointId brkId);
