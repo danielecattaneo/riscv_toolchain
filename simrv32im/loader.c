@@ -1,12 +1,18 @@
 #include <stdio.h>
+#include <inttypes.h>
 #include "loader.h"
+#include "debugger.h"
 
 
 t_ldrError ldrLoadBinary(const char *path, t_memAddress baseAddr)
 {
    size_t size;
    uint8_t *buf;
-   FILE *fp = fopen(path, "rb");
+   FILE *fp;
+
+   dbgPrintf("Loading raw binary file \"%s\" at address %"PRIu32"\n", path);
+
+   fp = fopen(path, "rb");
    if (fp == NULL)
       return LDR_FILE_ERROR;
    
@@ -111,6 +117,8 @@ t_ldrError ldrLoadELF(const char *path)
    off_t phi, phnum, phoff, phentsize, readsz;
    uint8_t *buf;
 
+   dbgPrintf("Loading ELF file \"%s\"\n", path);
+
    fp = fopen(path, "rb");
    if (fp == NULL)
       return LDR_FILE_ERROR;
@@ -141,6 +149,8 @@ t_ldrError ldrLoadELF(const char *path)
       if (segment.p_type != PT_LOAD)
          goto invalid_file;
 
+      dbgPrintf("Loaded section at 0x%08"PRIx32" (size=0x%08"PRIx32") to 0x%08"PRIx32" (size=0x%08"PRIx32")\n", 
+            segment.p_offset, segment.p_filesz, segment.p_vaddr, segment.p_memsz);
       if (memMapArea(segment.p_vaddr, segment.p_memsz, &buf) != MEM_NO_ERROR)
          goto mem_error;
       fseeko(fp, (off_t)segment.p_offset, SEEK_SET);
@@ -149,6 +159,7 @@ t_ldrError ldrLoadELF(const char *path)
          goto read_error;
    }
 
+   dbgPrintf("Setting the entry point to 0x%"PRIx32"\n", header.e_entry); 
    cpuReset(header.e_entry);
 
    goto cleanup;
