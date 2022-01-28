@@ -1,4 +1,4 @@
-bindir = .
+bindir = ../bin
 project = $(bindir)/simrv32im
 override CFLAGS += 
 override LDFLAGS +=
