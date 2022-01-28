@@ -21,7 +21,7 @@ enum {
 };
 
 
-t_ldrError ldrLoadBinary(const char *path, t_memAddress baseAddr);
+t_ldrError ldrLoadBinary(const char *path, t_memAddress baseAddr, t_memAddress entry);
 t_ldrError ldrLoadELF(const char *path);
 
 t_ldrFileType ldrDetectExecType(const char *path);

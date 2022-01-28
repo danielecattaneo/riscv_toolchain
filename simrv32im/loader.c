@@ -4,7 +4,7 @@
 #include "debugger.h"
 
 
-t_ldrError ldrLoadBinary(const char *path, t_memAddress baseAddr)
+t_ldrError ldrLoadBinary(const char *path, t_memAddress baseAddr, t_memAddress entry)
 {
    size_t size;
    uint8_t *buf;
@@ -37,7 +37,7 @@ t_ldrError ldrLoadBinary(const char *path, t_memAddress baseAddr)
       return LDR_FILE_ERROR;
    }
 
-   cpuReset(baseAddr);
+   cpuReset(entry);
 
    fclose(fp);
    return LDR_NO_ERROR;

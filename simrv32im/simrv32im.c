@@ -25,7 +25,7 @@ void usage(const char *name)
 int main(int argc, char *argv[])
 {
    t_svStatus status;
-   int ch, debug;
+   int ch, debug, entryIsSet;
    char *tmpStr, *name;
    t_memAddress entry, load;
    t_ldrFileType excType;
@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 
    name = argv[0];
    debug = 0;
-   entry = 0;
+   entry = entryIsSet = 0;
    load = 0;
 
    while ((ch = getopt_long(argc, argv, "de:hl:", options, NULL)) != -1) {
@@ -48,6 +48,7 @@ int main(int argc, char *argv[])
             debug = 1;
             break;
          case 'e':
+            entryIsSet = 1;
             entry = (t_memAddress)strtoul(optarg, &tmpStr, 0);
             if (tmpStr == optarg) {
                fprintf(stderr, "Invalid entry address\n");
@@ -79,12 +80,19 @@ int main(int argc, char *argv[])
       fprintf(stderr, "Cannot load more than one file, exiting.\n");
       return 2;
    }
+
+   if (debug)
+      dbgEnable();
    
    excType = ldrDetectExecType(argv[0]);
    if (excType == LDR_FORMAT_BINARY) {
-      ldrErr = ldrLoadBinary(argv[0], load);
+      if (!entryIsSet)
+         entry = load;
+      ldrErr = ldrLoadBinary(argv[0], load, entry);
    } else if (excType == LDR_FORMAT_ELF) {
       ldrErr = ldrLoadELF(argv[0]);
+      if (entryIsSet)
+         cpuSetRegister(CPU_REG_PC, entry);
    } else {
       fprintf(stderr, "Could not open executable, exiting.\n");
       return 3;
@@ -102,12 +110,9 @@ int main(int argc, char *argv[])
    }
 
    status = svInit();
-   cpuSetRegister(CPU_REG_PC, entry);
 
-   if (debug) {
-      dbgEnable();
+   if (debug)
       dbgRequestEnter();
-   }
 
    while (status == SV_STATUS_RUNNING) {
       status = svVMTick();
