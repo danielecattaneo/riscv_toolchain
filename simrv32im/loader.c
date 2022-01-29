@@ -151,12 +151,16 @@ t_ldrError ldrLoadELF(const char *path)
 
       dbgPrintf("Loaded section at 0x%08"PRIx32" (size=0x%08"PRIx32") to 0x%08"PRIx32" (size=0x%08"PRIx32")\n", 
             segment.p_offset, segment.p_filesz, segment.p_vaddr, segment.p_memsz);
-      if (memMapArea(segment.p_vaddr, segment.p_memsz, &buf) != MEM_NO_ERROR)
-         goto mem_error;
-      fseeko(fp, (off_t)segment.p_offset, SEEK_SET);
-      readsz = MIN(segment.p_memsz, segment.p_filesz);
-      if (fread(buf, readsz, 1, fp) < 1)
-         goto read_error;
+      if (segment.p_memsz > 0) {
+         if (memMapArea(segment.p_vaddr, segment.p_memsz, &buf) != MEM_NO_ERROR)
+            goto mem_error;
+         if (segment.p_filesz > 0) {
+            fseeko(fp, (off_t)segment.p_offset, SEEK_SET);
+            readsz = MIN(segment.p_memsz, segment.p_filesz);
+            if (fread(buf, readsz, 1, fp) < 1)
+               goto read_error;
+         }
+      }
    }
 
    dbgPrintf("Setting the entry point to 0x%"PRIx32"\n", header.e_entry); 
