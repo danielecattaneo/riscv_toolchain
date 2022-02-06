@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "object.h"
+#include "encode.h"
 
 
 typedef int t_objSecItemClass;
@@ -30,6 +31,8 @@ struct t_objLabel {
 struct t_objSection {
    t_objSecItem *items;
    t_objSecItem *lastItem;
+   uint32_t start;
+   uint32_t size;
 };
 
 struct t_object {
@@ -48,6 +51,8 @@ static t_objSection *newSection(void)
       return NULL;
    sec->items = NULL;
    sec->lastItem = NULL;
+   sec->start = 0;
+   sec->size = 0;
    return sec;
 }
 
@@ -61,8 +66,6 @@ static void deleteSection(t_objSection *sec)
 
    for (item = sec->items; item != NULL; item = nextItm) {
       nextItm = item->next;
-      if (item->class == OBJ_SEC_ITM_CLASS_DATA)
-         free(item->body.data.data);
       free(item);
    }
 
@@ -195,14 +198,71 @@ int objSecDeclareLabel(t_objSection *sec, t_objLabel *label)
 }
 
 
+static uint32_t objSecMaterializeAddresses(t_objSection *sec, uint32_t baseAddr)
+{
+   uint32_t curAddr = baseAddr;
+   uint32_t thisSize;
+   t_objSecItem *itm;
+
+   sec->start = baseAddr;
+   sec->size = 0;
+   for (itm = sec->items; itm != NULL; itm = itm->next) {
+      itm->address = curAddr;
+      thisSize = 0;
+      switch (itm->class) {
+         case OBJ_SEC_ITM_CLASS_DATA:
+            thisSize = itm->body.data.dataSize;
+            break;
+         case OBJ_SEC_ITM_CLASS_INSTR:
+            thisSize = encGetInstrLength(itm->body.instr);
+            break;
+      }
+      sec->size += thisSize;
+      curAddr += thisSize;
+   }
+   return curAddr;
+}
+
+void objMaterializeAddresses(t_object *obj)
+{
+   uint32_t curAddr = 0x1000;
+   curAddr = objSecMaterializeAddresses(obj->text, curAddr);
+   objSecMaterializeAddresses(obj->data, curAddr);
+}
+
+
+void objSecMaterializeInstructions(t_objSection *sec)
+{
+   t_data tmp;
+   t_objSecItem *itm;
+
+   for (itm = sec->items; itm != NULL; itm = itm->next) {
+      if (itm->class != OBJ_SEC_ITM_CLASS_INSTR)
+         continue;
+      encodeInstruction(itm->body.instr, &tmp);
+      itm->class = OBJ_SEC_ITM_CLASS_DATA;
+      itm->body.data = tmp;
+   }
+}
+
+void objMaterializeInstructions(t_object *obj)
+{
+   objSecMaterializeInstructions(obj->text);
+   objSecMaterializeInstructions(obj->data);
+}
+
+
 static void objSecDump(t_objSection *sec)
 {
    t_objSecItem *itm;
+   int i;
 
    printf("{\n");
+   printf("  Start = 0x%08x\n", sec->start);
+   printf("  Size = 0x%08x\n", sec->size);
    for (itm = sec->items; itm != NULL; itm = itm->next) {
       printf("  %p = {\n", (void *)itm);
-      printf("    Address = %08x,\n", itm->address);
+      printf("    Address = 0x%08x,\n", itm->address);
       printf("    Class = %d,\n", itm->class);
       if (itm->class == OBJ_SEC_ITM_CLASS_INSTR) {
          printf("    Opcode = %d,\n", itm->body.instr.opcode);
@@ -213,7 +273,13 @@ static void objSecDump(t_objSection *sec)
          printf("    Label = %p,\n", (void *)itm->body.instr.label);
       } else if (itm->class == OBJ_SEC_ITM_CLASS_DATA) {
          printf("    DataSize = %ld,\n", itm->body.data.dataSize);
-         printf("    Data = %p\n", (void *)itm->body.data.data);
+         printf("    Initialized = %d,\n", itm->body.data.initialized);
+         if (itm->body.data.initialized) {
+            printf("    Data = { ");
+            for (i=0; i<DATA_MAX; i++)
+               printf("%02x ", itm->body.data.data[i]);
+            printf("}\n");
+         }
       } else if (itm->class == OBJ_SEC_ITM_CLASS_VOID) {
          printf("    (null contents)\n");
       } else {

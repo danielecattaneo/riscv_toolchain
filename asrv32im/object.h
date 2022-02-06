@@ -40,9 +40,11 @@ typedef struct t_instruction {
    t_objLabel *label;
 } t_instruction;
 
+#define DATA_MAX 16
 typedef struct t_data {
-   uint8_t *data;
    size_t dataSize;
+   int initialized;
+   uint8_t data[DATA_MAX];
 } t_data;
 
 
@@ -56,6 +58,9 @@ t_objSection *objGetSection(t_object *obj, t_objSectionID id);
 void objSecAppendData(t_objSection *sec, t_data data);
 void objSecAppendInstruction(t_objSection *sec, t_instruction instr);
 int objSecDeclareLabel(t_objSection *sec, t_objLabel *label);
+
+void objMaterializeAddresses(t_object *obj);
+void objMaterializeInstructions(t_object *obj);
 
 
 #endif

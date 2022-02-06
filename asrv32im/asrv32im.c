@@ -15,6 +15,8 @@ int main(int argc, char *argv[])
    fp = fopen(argv[1], "r");
    lex = newLexer(fp);
    obj = parseObject(lex);
+   objMaterializeAddresses(obj);
+   objMaterializeInstructions(obj);
    if (obj)
       objDump(obj);
 

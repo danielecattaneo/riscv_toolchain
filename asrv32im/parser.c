@@ -82,7 +82,7 @@ int expectRegister(t_parserState *state, t_instrRegID *res, int last)
 
 int expectLineContent(t_parserState *state)
 {
-   int32_t *buf;
+   int32_t temp;
    t_data data = { 0 };
    t_instruction instr = { 0 };
 
@@ -90,7 +90,7 @@ int expectLineContent(t_parserState *state)
       if (!parserExpect(state, TOK_NUMBER, "expected number after \".space\""))
          return 0;
       data.dataSize = lexGetLastNumberValue(state->lex);
-      data.data = NULL;
+      data.initialized = 0;
       objSecAppendData(state->curSection, data);
       return 1;
    }
@@ -99,12 +99,13 @@ int expectLineContent(t_parserState *state)
       do {
          if (!parserExpect(state, TOK_NUMBER, "expected number"))
             return 0;
-         
+         temp = lexGetLastNumberValue(state->lex);
          data.dataSize = sizeof(int32_t);
-         buf = malloc(sizeof(int32_t));
-         *buf = lexGetLastNumberValue(state->lex);
-         data.data = (uint8_t *)((void *)buf);
-
+         data.initialized = 1;
+         data.data[0] = temp & 0xFF;
+         data.data[1] = (temp >> 8) & 0xFF;
+         data.data[2] = (temp >> 16) & 0xFF;
+         data.data[3] = (temp >> 24) & 0xFF;
          objSecAppendData(state->curSection, data);
       } while (parserAccept(state, TOK_COMMA));
       return 1;
