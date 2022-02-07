@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "lexer.h"
 #include "parser.h"
+#include "output.h"
 
 
 int main(int argc, char *argv[])
@@ -19,6 +20,7 @@ int main(int argc, char *argv[])
    objMaterializeInstructions(obj);
    if (obj)
       objDump(obj);
+   outputToELF(obj, argv[2]);
 
 #if 0
    tok = lexNextToken(lex);

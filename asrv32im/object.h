@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <ctype.h>
 
-
 typedef int t_objSectionID;
 enum {
    OBJ_SECTION_TEXT,
@@ -14,7 +13,6 @@ enum {
 typedef struct t_object t_object;
 typedef struct t_objLabel t_objLabel;
 typedef struct t_objSection t_objSection;
-
 
 typedef int t_instrRegID;
 typedef int t_instrOpcode;
@@ -47,6 +45,23 @@ typedef struct t_data {
    uint8_t data[DATA_MAX];
 } t_data;
 
+typedef int t_objSecItemClass;
+enum {
+   OBJ_SEC_ITM_CLASS_INSTR,
+   OBJ_SEC_ITM_CLASS_DATA,
+   OBJ_SEC_ITM_CLASS_VOID
+};
+
+typedef struct t_objSecItem {
+   struct t_objSecItem *next;
+   uint32_t address;
+   t_objSecItemClass class;
+   union {
+      t_instruction instr;
+      t_data data;
+   } body;
+} t_objSecItem;
+
 
 t_object *newObject(void);
 void deleteObject(t_object *obj);
@@ -59,8 +74,13 @@ void objSecAppendData(t_objSection *sec, t_data data);
 void objSecAppendInstruction(t_objSection *sec, t_instruction instr);
 int objSecDeclareLabel(t_objSection *sec, t_objLabel *label);
 
+t_objSecItem *objSecGetItemList(t_objSection *sec);
+uint32_t objSecGetStart(t_objSection *sec);
+uint32_t objSecGetSize(t_objSection *sec);
+
+uint32_t objLabelGetPointer(t_objLabel *lbl);
+
 void objMaterializeAddresses(t_object *obj);
 void objMaterializeInstructions(t_object *obj);
-
 
 #endif

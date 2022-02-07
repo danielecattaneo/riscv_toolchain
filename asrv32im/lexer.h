@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include "object.h"
 
-
 typedef int t_tokenID;
 enum {
    TOK_UNRECOGNIZED = -1,
@@ -39,6 +38,5 @@ int lexGetLastTokenColumn(t_lexer *lex);
 t_instrOpcode lexGetLastMnemonicOpcode(t_lexer *lex);
 t_instrRegID lexGetLastRegisterID(t_lexer *lex);
 int32_t lexGetLastNumberValue(t_lexer *lex);
-
 
 #endif

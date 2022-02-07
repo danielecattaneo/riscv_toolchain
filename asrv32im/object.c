@@ -5,23 +5,6 @@
 #include "encode.h"
 
 
-typedef int t_objSecItemClass;
-enum {
-   OBJ_SEC_ITM_CLASS_INSTR,
-   OBJ_SEC_ITM_CLASS_DATA,
-   OBJ_SEC_ITM_CLASS_VOID
-};
-
-typedef struct t_objSecItem {
-   struct t_objSecItem *next;
-   uint32_t address;
-   t_objSecItemClass class;
-   union {
-      t_instruction instr;
-      t_data data;
-   } body;
-} t_objSecItem;
-
 struct t_objLabel {
    struct t_objLabel *next;
    char *name;
@@ -195,6 +178,28 @@ int objSecDeclareLabel(t_objSection *sec, t_objLabel *label)
 
    label->pointer = itm;
    return 1;
+}
+
+
+t_objSecItem *objSecGetItemList(t_objSection *sec)
+{
+   return sec->items;
+}
+
+uint32_t objSecGetStart(t_objSection *sec)
+{
+   return sec->start;
+}
+
+uint32_t objSecGetSize(t_objSection *sec)
+{
+   return sec->size;
+}
+
+
+uint32_t objLabelGetPointer(t_objLabel *lbl)
+{
+   return lbl->pointer->address;
 }
 
 
