@@ -186,11 +186,11 @@ static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
          return FORMAT_LI;
       case OPC_LA:
          return FORMAT_LA;
-      case OPC_NOP:
-      case OPC_ECALL:
-      case OPC_EBREAK:
-         return FORMAT_SYSTEM;
       */
+      case INSTR_OPC_NOP:
+      case INSTR_OPC_ECALL:
+      case INSTR_OPC_EBREAK:
+         return FORMAT_SYSTEM;
    }
    return -1;
 }
@@ -251,6 +251,9 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
             return P_SYN_ERROR;
          if (parserExpect(state, TOK_RPAR, "expected parenthesis") != P_ACCEPT)
             return P_SYN_ERROR;
+         break;
+
+      case FORMAT_SYSTEM:
          break;
          
       default:

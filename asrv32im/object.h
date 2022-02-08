@@ -43,7 +43,10 @@ enum {
    INSTR_OPC_LHU,
    INSTR_OPC_SB,
    INSTR_OPC_SH,
-   INSTR_OPC_SW
+   INSTR_OPC_SW,
+   INSTR_OPC_NOP,
+   INSTR_OPC_ECALL,
+   INSTR_OPC_EBREAK
 };
 
 typedef struct t_instruction {

@@ -1,3 +1,6 @@
+#include <assert.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include "encode.h"
 
 #define MASK(n) (((uint32_t)1 << (uint32_t)(n)) - (uint32_t)1)
@@ -98,71 +101,97 @@ typedef struct t_encInstrData {
    char type;
    int opcode;
    int funct3;
-   int funct7;
+   int funct7;  /* also used for immediates */
 } t_encInstrData;
 
-int encodeInstruction(t_instruction instr, t_data *res)
+static uint32_t encPhysicalInstruction(t_instruction instr)
 {
    static const t_encInstrData opInstData[] = {
-      { INSTR_OPC_ADD,  'R', ENC_OPCODE_OP,    0, 0x00 },
-      { INSTR_OPC_SUB,  'R', ENC_OPCODE_OP,    0, 0x20 },
-      { INSTR_OPC_SLL,  'R', ENC_OPCODE_OP,    1, 0x00 },
-      { INSTR_OPC_SLT,  'R', ENC_OPCODE_OP,    2, 0x00 },
-      { INSTR_OPC_SLTU, 'R', ENC_OPCODE_OP,    3, 0x00 },
-      { INSTR_OPC_XOR,  'R', ENC_OPCODE_OP,    4, 0x00 },
-      { INSTR_OPC_SRL,  'R', ENC_OPCODE_OP,    5, 0x00 },
-      { INSTR_OPC_SRA,  'R', ENC_OPCODE_OP,    5, 0x20 },
-      { INSTR_OPC_OR,   'R', ENC_OPCODE_OP,    6, 0x00 },
-      { INSTR_OPC_AND,  'R', ENC_OPCODE_OP,    7, 0x00 },
-      { INSTR_OPC_ADDI, 'I', ENC_OPCODE_OPIMM, 0, 0x00 },
-      { INSTR_OPC_SLLI, 'I', ENC_OPCODE_OPIMM, 1, 0x00 },
-      { INSTR_OPC_SLTI, 'I', ENC_OPCODE_OPIMM, 2, 0x00 },
-      { INSTR_OPC_SLTIU,'I', ENC_OPCODE_OPIMM, 3, 0x00 },
-      { INSTR_OPC_XORI, 'I', ENC_OPCODE_OPIMM, 4, 0x00 },
-      { INSTR_OPC_SRLI, 'I', ENC_OPCODE_OPIMM, 5, 0x00 },
-      { INSTR_OPC_SRAI, 'I', ENC_OPCODE_OPIMM, 5, 0x20 },
-      { INSTR_OPC_ORI,  'I', ENC_OPCODE_OPIMM, 6, 0x00 },
-      { INSTR_OPC_ANDI, 'I', ENC_OPCODE_OPIMM, 7, 0x00 },
-      { INSTR_OPC_LB,   'I', ENC_OPCODE_LOAD,  0, 0x00 },
-      { INSTR_OPC_LH,   'I', ENC_OPCODE_LOAD,  1, 0x00 },
-      { INSTR_OPC_LW,   'I', ENC_OPCODE_LOAD,  2, 0x00 },
-      { INSTR_OPC_LBU,  'I', ENC_OPCODE_LOAD,  4, 0x00 },
-      { INSTR_OPC_LHU,  'I', ENC_OPCODE_LOAD,  5, 0x00 },
-      { INSTR_OPC_SB,   'S', ENC_OPCODE_STORE, 0, 0x00 },
-      { INSTR_OPC_SH,   'S', ENC_OPCODE_STORE, 1, 0x00 },
-      { INSTR_OPC_SW,   'S', ENC_OPCODE_STORE, 2, 0x00 },
+      { INSTR_OPC_ADD,    'R', ENC_OPCODE_OP,     0, 0x00      },
+      { INSTR_OPC_SUB,    'R', ENC_OPCODE_OP,     0, 0x20      },
+      { INSTR_OPC_SLL,    'R', ENC_OPCODE_OP,     1, 0x00      },
+      { INSTR_OPC_SLT,    'R', ENC_OPCODE_OP,     2, 0x00      },
+      { INSTR_OPC_SLTU,   'R', ENC_OPCODE_OP,     3, 0x00      },
+      { INSTR_OPC_XOR,    'R', ENC_OPCODE_OP,     4, 0x00      },
+      { INSTR_OPC_SRL,    'R', ENC_OPCODE_OP,     5, 0x00      },
+      { INSTR_OPC_SRA,    'R', ENC_OPCODE_OP,     5, 0x20      },
+      { INSTR_OPC_OR,     'R', ENC_OPCODE_OP,     6, 0x00      },
+      { INSTR_OPC_AND,    'R', ENC_OPCODE_OP,     7, 0x00      },
+      { INSTR_OPC_ADDI,   'I', ENC_OPCODE_OPIMM,  0, 0x00 << 5 },
+      { INSTR_OPC_SLLI,   'I', ENC_OPCODE_OPIMM,  1, 0x00 << 5 },
+      { INSTR_OPC_SLTI,   'I', ENC_OPCODE_OPIMM,  2, 0x00 << 5 },
+      { INSTR_OPC_SLTIU,  'I', ENC_OPCODE_OPIMM,  3, 0x00 << 5 },
+      { INSTR_OPC_XORI,   'I', ENC_OPCODE_OPIMM,  4, 0x00 << 5 },
+      { INSTR_OPC_SRLI,   'I', ENC_OPCODE_OPIMM,  5, 0x00 << 5 },
+      { INSTR_OPC_SRAI,   'I', ENC_OPCODE_OPIMM,  5, 0x20 << 5 },
+      { INSTR_OPC_ORI,    'I', ENC_OPCODE_OPIMM,  6, 0x00 << 5 },
+      { INSTR_OPC_ANDI,   'I', ENC_OPCODE_OPIMM,  7, 0x00 << 5 },
+      { INSTR_OPC_LB,     'I', ENC_OPCODE_LOAD,   0, 0x00 << 5 },
+      { INSTR_OPC_LH,     'I', ENC_OPCODE_LOAD,   1, 0x00 << 5 },
+      { INSTR_OPC_LW,     'I', ENC_OPCODE_LOAD,   2, 0x00 << 5 },
+      { INSTR_OPC_LBU,    'I', ENC_OPCODE_LOAD,   4, 0x00 << 5 },
+      { INSTR_OPC_LHU,    'I', ENC_OPCODE_LOAD,   5, 0x00 << 5 },
+      { INSTR_OPC_SB,     'S', ENC_OPCODE_STORE,  0, 0x00 << 5 },
+      { INSTR_OPC_SH,     'S', ENC_OPCODE_STORE,  1, 0x00 << 5 },
+      { INSTR_OPC_SW,     'S', ENC_OPCODE_STORE,  2, 0x00 << 5 },
+      { INSTR_OPC_ECALL,  'I', ENC_OPCODE_SYSTEM, 0, 0         },
+      { INSTR_OPC_EBREAK, 'I', ENC_OPCODE_SYSTEM, 0, 1         },
       { -1 }
    };
    const t_encInstrData *info;
-   uint32_t buf;
+   uint32_t res;
 
    for (info = opInstData; info->instID != -1; info++) {
       if (info->instID == instr.opcode)
          break;
    }
-   if (info->instID == -1)
-      return 0;
+   assert(info->instID != -1);
 
    switch (info->type) {
       case 'R':
-         buf = encPackRFormat(info->opcode, info->funct3, info->funct7, instr.dest, instr.src1, instr.src2);
+         res = encPackRFormat(info->opcode, info->funct3, info->funct7, instr.dest, instr.src1, instr.src2);
          break;
       case 'I':
-         buf = encPackIFormat(info->opcode, info->funct3, instr.dest, instr.src1, instr.immediate | info->funct7 << 5);
+         res = encPackIFormat(info->opcode, info->funct3, instr.dest, instr.src1, instr.immediate | info->funct7);
          break;
       case 'S':
-         buf = encPackSFormat(info->opcode, info->funct3, instr.src1, instr.src2, instr.immediate | info->funct7 << 5);
+         res = encPackSFormat(info->opcode, info->funct3, instr.src1, instr.src2, instr.immediate | info->funct7);
          break;
       default:
-         return 0;
+         assert("invalid instruction encoding type");
+   }
+   return res;
+}
+
+
+int encodeInstruction(t_instruction instr, t_data *res)
+{
+   int i, mInstSz = 0;
+   t_instruction mInstBuf[3] = { 0 };
+   uint32_t buf;
+
+   /* resolve pseudo-instructions */
+   switch (instr.opcode) {
+      case INSTR_OPC_NOP:
+         mInstBuf[mInstSz].opcode = INSTR_OPC_ADDI;
+         mInstBuf[mInstSz].dest = 0;
+         mInstBuf[mInstSz].src1 = 0;
+         mInstBuf[mInstSz].immediate = 0;
+         mInstSz++;
+         break;
+      default:
+         mInstBuf[mInstSz++] = instr;
    }
 
-   res->dataSize = 4;
    res->initialized = 1;
-   res->data[0] = buf & 0xFF;
-   res->data[1] = (buf >> 8) & 0xFF;
-   res->data[2] = (buf >> 16) & 0xFF;
-   res->data[3] = (buf >> 24) & 0xFF;
+   res->dataSize = 0;
+   for (i = 0; i < mInstSz; i++) {
+      buf = encPhysicalInstruction(mInstBuf[i]);
+      res->data[res->dataSize++] = buf & 0xFF;
+      res->data[res->dataSize++] = (buf >> 8) & 0xFF;
+      res->data[res->dataSize++] = (buf >> 16) & 0xFF;
+      res->data[res->dataSize++] = (buf >> 24) & 0xFF;
+   }
    return 1;
 }
 
