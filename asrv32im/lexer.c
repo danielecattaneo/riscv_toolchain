@@ -171,9 +171,13 @@ static void lexSkipWhitespaceAndComments(t_lexer *lex)
 static t_tokenID lexConsumeNumber(t_lexer *lex, char firstChar)
 {
    char next, *temp;
-   next = lexGetChar(lex);
+
+   if (firstChar == '-')
+      firstChar = lexGetChar(lex);
 
    if (firstChar == '0') {
+      next = lexGetChar(lex);
+      
       if (next == 'x') {
          next = lexGetChar(lex);
          if (!isxdigit(next))
@@ -193,6 +197,7 @@ static t_tokenID lexConsumeNumber(t_lexer *lex, char firstChar)
             next = lexGetChar(lex);
       }
    } else {
+      next = firstChar;
       while (isnumber(next))
          next = lexGetChar(lex);
    }
@@ -247,49 +252,58 @@ typedef struct t_keywordData {
 static t_tokenID lexConsumeIdentifierOrKeyword(t_lexer *lex, char firstChar)
 {
    static const t_keywordData kwdata[] = {
-      {"zero", TOK_REGISTER,  0},
-      {  "ra", TOK_REGISTER,  1}, 
-      {  "sp", TOK_REGISTER,  2}, 
-      {  "gp", TOK_REGISTER,  3},
-      {  "tp", TOK_REGISTER,  4}, 
-      {  "t0", TOK_REGISTER,  5}, 
-      {  "t1", TOK_REGISTER,  6},
-      {  "t2", TOK_REGISTER,  7}, 
-      {  "s0", TOK_REGISTER,  8}, 
-      {  "fp", TOK_REGISTER,  8},
-      {  "s1", TOK_REGISTER,  9}, 
-      {  "a0", TOK_REGISTER, 10}, 
-      {  "a1", TOK_REGISTER, 11},
-      {  "a2", TOK_REGISTER, 12}, 
-      {  "a3", TOK_REGISTER, 13}, 
-      {  "a4", TOK_REGISTER, 14},
-      {  "a5", TOK_REGISTER, 15}, 
-      {  "a6", TOK_REGISTER, 16}, 
-      {  "a7", TOK_REGISTER, 17},
-      {  "s2", TOK_REGISTER, 18},
-      {  "s3", TOK_REGISTER, 19},
-      {  "s4", TOK_REGISTER, 20},
-      {  "s5", TOK_REGISTER, 21},
-      {  "s6", TOK_REGISTER, 22}, 
-      {  "s7", TOK_REGISTER, 23},
-      {  "s8", TOK_REGISTER, 24}, 
-      {  "s9", TOK_REGISTER, 25}, 
-      { "s10", TOK_REGISTER, 26},
-      { "s11", TOK_REGISTER, 27}, 
-      {  "t3", TOK_REGISTER, 28}, 
-      {  "t4", TOK_REGISTER, 29}, 
-      {  "t5", TOK_REGISTER, 30}, 
-      {  "t6", TOK_REGISTER, 31}, 
-      { "add", TOK_MNEMONIC, INSTR_OPC_ADD}, 
-      { "sub", TOK_MNEMONIC, INSTR_OPC_SUB},
-      { "xor", TOK_MNEMONIC, INSTR_OPC_XOR}, 
-      {  "or", TOK_MNEMONIC, INSTR_OPC_OR}, 
-      { "and", TOK_MNEMONIC, INSTR_OPC_AND}, 
-      { "sll", TOK_MNEMONIC, INSTR_OPC_SLL},
-      { "srl", TOK_MNEMONIC, INSTR_OPC_SRL}, 
-      { "sra", TOK_MNEMONIC, INSTR_OPC_SRA}, 
-      { "slt", TOK_MNEMONIC, INSTR_OPC_SLT},
-      {"sltu", TOK_MNEMONIC, INSTR_OPC_SLTU}, 
+      { "zero", TOK_REGISTER,  0},
+      {   "ra", TOK_REGISTER,  1}, 
+      {   "sp", TOK_REGISTER,  2}, 
+      {   "gp", TOK_REGISTER,  3},
+      {   "tp", TOK_REGISTER,  4}, 
+      {   "t0", TOK_REGISTER,  5}, 
+      {   "t1", TOK_REGISTER,  6},
+      {   "t2", TOK_REGISTER,  7}, 
+      {   "s0", TOK_REGISTER,  8}, 
+      {   "fp", TOK_REGISTER,  8},
+      {   "s1", TOK_REGISTER,  9}, 
+      {   "a0", TOK_REGISTER, 10}, 
+      {   "a1", TOK_REGISTER, 11},
+      {   "a2", TOK_REGISTER, 12}, 
+      {   "a3", TOK_REGISTER, 13}, 
+      {   "a4", TOK_REGISTER, 14},
+      {   "a5", TOK_REGISTER, 15}, 
+      {   "a6", TOK_REGISTER, 16}, 
+      {   "a7", TOK_REGISTER, 17},
+      {   "s2", TOK_REGISTER, 18},
+      {   "s3", TOK_REGISTER, 19},
+      {   "s4", TOK_REGISTER, 20},
+      {   "s5", TOK_REGISTER, 21},
+      {   "s6", TOK_REGISTER, 22}, 
+      {   "s7", TOK_REGISTER, 23},
+      {   "s8", TOK_REGISTER, 24}, 
+      {   "s9", TOK_REGISTER, 25}, 
+      {  "s10", TOK_REGISTER, 26},
+      {  "s11", TOK_REGISTER, 27}, 
+      {   "t3", TOK_REGISTER, 28}, 
+      {   "t4", TOK_REGISTER, 29}, 
+      {   "t5", TOK_REGISTER, 30}, 
+      {   "t6", TOK_REGISTER, 31}, 
+      {  "add", TOK_MNEMONIC, INSTR_OPC_ADD}, 
+      {  "sub", TOK_MNEMONIC, INSTR_OPC_SUB},
+      {  "xor", TOK_MNEMONIC, INSTR_OPC_XOR}, 
+      {   "or", TOK_MNEMONIC, INSTR_OPC_OR}, 
+      {  "and", TOK_MNEMONIC, INSTR_OPC_AND}, 
+      {  "sll", TOK_MNEMONIC, INSTR_OPC_SLL},
+      {  "srl", TOK_MNEMONIC, INSTR_OPC_SRL}, 
+      {  "sra", TOK_MNEMONIC, INSTR_OPC_SRA}, 
+      {  "slt", TOK_MNEMONIC, INSTR_OPC_SLT},
+      { "sltu", TOK_MNEMONIC, INSTR_OPC_SLTU}, 
+      { "addi", TOK_MNEMONIC, INSTR_OPC_ADDI}, 
+      { "xori", TOK_MNEMONIC, INSTR_OPC_XORI}, 
+      {  "ori", TOK_MNEMONIC, INSTR_OPC_ORI}, 
+      { "andi", TOK_MNEMONIC, INSTR_OPC_ANDI}, 
+      { "slli", TOK_MNEMONIC, INSTR_OPC_SLLI}, 
+      { "srli", TOK_MNEMONIC, INSTR_OPC_SRLI}, 
+      { "srai", TOK_MNEMONIC, INSTR_OPC_SRAI}, 
+      { "slti", TOK_MNEMONIC, INSTR_OPC_SLTI}, 
+      {"sltiu", TOK_MNEMONIC, INSTR_OPC_SLTIU}, 
       {NULL, TOK_UNRECOGNIZED}};
 #define KEYWORD_MAX 10
    char kwbuf[KEYWORD_MAX+1];
@@ -368,7 +382,7 @@ t_tokenID lexNextToken(t_lexer *lex)
    if (next == ')')
       return TOK_RPAR;
 
-   if (isnumber(next)) {
+   if (isnumber(next) || next == '-') {
       return lexConsumeNumber(lex, next);
    }
    if (next == '.') {

@@ -104,16 +104,25 @@ typedef struct t_encInstrData {
 int encodeInstruction(t_instruction instr, t_data *res)
 {
    static const t_encInstrData opInstData[] = {
-      { INSTR_OPC_ADD,  'R', ENC_OPCODE_OP, 0, 0x00 },
-      { INSTR_OPC_SUB,  'R', ENC_OPCODE_OP, 0, 0x20 },
-      { INSTR_OPC_SLL,  'R', ENC_OPCODE_OP, 1, 0x00 },
-      { INSTR_OPC_SLT,  'R', ENC_OPCODE_OP, 2, 0x00 },
-      { INSTR_OPC_SLTU, 'R', ENC_OPCODE_OP, 3, 0x00 },
-      { INSTR_OPC_XOR,  'R', ENC_OPCODE_OP, 4, 0x00 },
-      { INSTR_OPC_SRL,  'R', ENC_OPCODE_OP, 5, 0x00 },
-      { INSTR_OPC_SRA,  'R', ENC_OPCODE_OP, 5, 0x20 },
-      { INSTR_OPC_OR,   'R', ENC_OPCODE_OP, 6, 0x00 },
-      { INSTR_OPC_AND,  'R', ENC_OPCODE_OP, 7, 0x00 },
+      { INSTR_OPC_ADD,  'R', ENC_OPCODE_OP,    0, 0x00 },
+      { INSTR_OPC_SUB,  'R', ENC_OPCODE_OP,    0, 0x20 },
+      { INSTR_OPC_SLL,  'R', ENC_OPCODE_OP,    1, 0x00 },
+      { INSTR_OPC_SLT,  'R', ENC_OPCODE_OP,    2, 0x00 },
+      { INSTR_OPC_SLTU, 'R', ENC_OPCODE_OP,    3, 0x00 },
+      { INSTR_OPC_XOR,  'R', ENC_OPCODE_OP,    4, 0x00 },
+      { INSTR_OPC_SRL,  'R', ENC_OPCODE_OP,    5, 0x00 },
+      { INSTR_OPC_SRA,  'R', ENC_OPCODE_OP,    5, 0x20 },
+      { INSTR_OPC_OR,   'R', ENC_OPCODE_OP,    6, 0x00 },
+      { INSTR_OPC_AND,  'R', ENC_OPCODE_OP,    7, 0x00 },
+      { INSTR_OPC_ADDI, 'I', ENC_OPCODE_OPIMM, 0, 0x00 },
+      { INSTR_OPC_SLLI, 'I', ENC_OPCODE_OPIMM, 1, 0x00 },
+      { INSTR_OPC_SLTI, 'I', ENC_OPCODE_OPIMM, 2, 0x00 },
+      { INSTR_OPC_SLTIU,'I', ENC_OPCODE_OPIMM, 3, 0x00 },
+      { INSTR_OPC_XORI, 'I', ENC_OPCODE_OPIMM, 4, 0x00 },
+      { INSTR_OPC_SRLI, 'I', ENC_OPCODE_OPIMM, 5, 0x00 },
+      { INSTR_OPC_SRAI, 'I', ENC_OPCODE_OPIMM, 5, 0x20 },
+      { INSTR_OPC_ORI,  'I', ENC_OPCODE_OPIMM, 6, 0x00 },
+      { INSTR_OPC_ANDI, 'I', ENC_OPCODE_OPIMM, 7, 0x00 },
       { -1 }
    };
    const t_encInstrData *info;
@@ -129,6 +138,9 @@ int encodeInstruction(t_instruction instr, t_data *res)
    switch (info->type) {
       case 'R':
          buf = encPackRFormat(info->opcode, info->funct3, info->funct7, instr.dest, instr.src1, instr.src2);
+         break;
+      case 'I':
+         buf = encPackIFormat(info->opcode, info->funct3, instr.dest, instr.src1, instr.immediate | info->funct7 << 5);
          break;
       default:
          return 0;

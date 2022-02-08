@@ -12,15 +12,23 @@ int main(int argc, char *argv[])
    t_tokenID tok;
    t_object *obj;
    char *buf;
+
+   if (argc < 3) {
+      if (argc > 0)
+         printf("usage: %s input.s output.elf\n", argv[0]);
+      return 1;
+   }
    
    fp = fopen(argv[1], "r");
    lex = newLexer(fp);
    obj = parseObject(lex);
-   objMaterializeAddresses(obj);
-   objMaterializeInstructions(obj);
-   if (obj)
+   if (obj) {
+      objMaterializeAddresses(obj);
+      objMaterializeInstructions(obj);
       objDump(obj);
-   outputToELF(obj, argv[2]);
+      outputToELF(obj, argv[2]);
+      deleteObject(obj);
+   }
 
 #if 0
    tok = lexNextToken(lex);
@@ -34,7 +42,6 @@ int main(int argc, char *argv[])
 #endif
 
    deleteLexer(lex);
-   deleteObject(obj);
    return 0;
 }
 
