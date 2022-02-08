@@ -123,6 +123,11 @@ int encodeInstruction(t_instruction instr, t_data *res)
       { INSTR_OPC_SRAI, 'I', ENC_OPCODE_OPIMM, 5, 0x20 },
       { INSTR_OPC_ORI,  'I', ENC_OPCODE_OPIMM, 6, 0x00 },
       { INSTR_OPC_ANDI, 'I', ENC_OPCODE_OPIMM, 7, 0x00 },
+      { INSTR_OPC_LB,   'I', ENC_OPCODE_LOAD,  0, 0x00 },
+      { INSTR_OPC_LH,   'I', ENC_OPCODE_LOAD,  1, 0x00 },
+      { INSTR_OPC_LW,   'I', ENC_OPCODE_LOAD,  2, 0x00 },
+      { INSTR_OPC_LBU,  'I', ENC_OPCODE_LOAD,  4, 0x00 },
+      { INSTR_OPC_LHU,  'I', ENC_OPCODE_LOAD,  5, 0x00 },
       { -1 }
    };
    const t_encInstrData *info;

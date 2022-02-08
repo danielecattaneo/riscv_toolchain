@@ -35,7 +35,12 @@ enum {
    INSTR_OPC_SRLI,
    INSTR_OPC_SRAI,
    INSTR_OPC_SLTI,
-   INSTR_OPC_SLTIU
+   INSTR_OPC_SLTIU,
+   INSTR_OPC_LB,
+   INSTR_OPC_LH,
+   INSTR_OPC_LW,
+   INSTR_OPC_LBU,
+   INSTR_OPC_LHU
 };
 
 typedef struct t_instruction {

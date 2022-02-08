@@ -177,7 +177,7 @@ static t_tokenID lexConsumeNumber(t_lexer *lex, char firstChar)
 
    if (firstChar == '0') {
       next = lexGetChar(lex);
-      
+
       if (next == 'x') {
          next = lexGetChar(lex);
          if (!isxdigit(next))
@@ -304,6 +304,11 @@ static t_tokenID lexConsumeIdentifierOrKeyword(t_lexer *lex, char firstChar)
       { "srai", TOK_MNEMONIC, INSTR_OPC_SRAI}, 
       { "slti", TOK_MNEMONIC, INSTR_OPC_SLTI}, 
       {"sltiu", TOK_MNEMONIC, INSTR_OPC_SLTIU}, 
+      {   "lb", TOK_MNEMONIC, INSTR_OPC_LB}, 
+      {   "lh", TOK_MNEMONIC, INSTR_OPC_LH}, 
+      {   "lw", TOK_MNEMONIC, INSTR_OPC_LW}, 
+      {  "lbu", TOK_MNEMONIC, INSTR_OPC_LBU}, 
+      {  "lhu", TOK_MNEMONIC, INSTR_OPC_LHU}, 
       {NULL, TOK_UNRECOGNIZED}};
 #define KEYWORD_MAX 10
    char kwbuf[KEYWORD_MAX+1];

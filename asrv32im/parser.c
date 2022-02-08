@@ -164,8 +164,14 @@ static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
       case OPC_BLE :
       case OPC_BLEU:
          return FORMAT_BRANCH;
-      case OPC_LW:
+      */
+      case INSTR_OPC_LB:
+      case INSTR_OPC_LH:
+      case INSTR_OPC_LW:
+      case INSTR_OPC_LBU:
+      case INSTR_OPC_LHU:
          return FORMAT_LOAD;
+      /*
       case OPC_LW_G:
          return FORMAT_LOAD_GL;
       case OPC_SW:
@@ -223,7 +229,20 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
          if (expectNumber(state, &instr.immediate, min, max) != P_ACCEPT)
             return P_SYN_ERROR;
          break;
-      
+
+      case FORMAT_LOAD:
+         if (expectRegister(state, &instr.dest, 0) != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (expectNumber(state, &instr.immediate, -0x800, 0x7FF) != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (parserExpect(state, TOK_LPAR, "expected parenthesis") != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (expectRegister(state, &instr.src1, 1) != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (parserExpect(state, TOK_RPAR, "expected parenthesis") != P_ACCEPT)
+            return P_SYN_ERROR;
+         break;
+         
       default:
          return P_SYN_ERROR;
    }
@@ -233,24 +252,24 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
 }
 
 
-static int expectData(t_parserState *state, t_tokenID lastToken)
+static t_parserError expectData(t_parserState *state, t_tokenID lastToken)
 {
    int32_t temp;
    t_data data = { 0 };
 
    if (lastToken == TOK_SPACE) {
       if (!parserExpect(state, TOK_NUMBER, "expected number after \".space\""))
-         return 0;
+         return P_SYN_ERROR;
       data.dataSize = lexGetLastNumberValue(state->lex);
       data.initialized = 0;
       objSecAppendData(state->curSection, data);
-      return 1;
+      return P_ACCEPT;
    }
 
    if (lastToken == TOK_WORD) {
       do {
          if (!parserExpect(state, TOK_NUMBER, "expected number"))
-            return 0;
+            return P_SYN_ERROR;
          temp = lexGetLastNumberValue(state->lex);
          data.dataSize = sizeof(int32_t);
          data.initialized = 1;
@@ -260,7 +279,7 @@ static int expectData(t_parserState *state, t_tokenID lastToken)
          data.data[3] = (temp >> 24) & 0xFF;
          objSecAppendData(state->curSection, data);
       } while (parserAccept(state, TOK_COMMA));
-      return 1;
+      return P_ACCEPT;
    }
 
    return P_SYN_ERROR;
