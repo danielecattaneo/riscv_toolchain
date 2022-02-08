@@ -174,8 +174,12 @@ static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
       /*
       case OPC_LW_G:
          return FORMAT_LOAD_GL;
-      case OPC_SW:
+      */
+      case INSTR_OPC_SB:
+      case INSTR_OPC_SH:
+      case INSTR_OPC_SW:
          return FORMAT_STORE;
+      /*
       case OPC_SW_G:
          return FORMAT_STORE_GL;
       case OPC_LI:
@@ -196,6 +200,7 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
 {
    t_instrFormat format;
    int32_t min, max;
+   t_parserError err;
    t_instruction instr = { 0 };
 
    if (lastToken != TOK_MNEMONIC)
@@ -231,7 +236,12 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
          break;
 
       case FORMAT_LOAD:
-         if (expectRegister(state, &instr.dest, 0) != P_ACCEPT)
+      case FORMAT_STORE:
+         if (format == FORMAT_LOAD)
+            err = expectRegister(state, &instr.dest, 0);
+         else
+            err = expectRegister(state, &instr.src2, 0);
+         if (err != P_ACCEPT)
             return P_SYN_ERROR;
          if (expectNumber(state, &instr.immediate, -0x800, 0x7FF) != P_ACCEPT)
             return P_SYN_ERROR;

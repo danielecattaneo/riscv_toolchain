@@ -128,6 +128,9 @@ int encodeInstruction(t_instruction instr, t_data *res)
       { INSTR_OPC_LW,   'I', ENC_OPCODE_LOAD,  2, 0x00 },
       { INSTR_OPC_LBU,  'I', ENC_OPCODE_LOAD,  4, 0x00 },
       { INSTR_OPC_LHU,  'I', ENC_OPCODE_LOAD,  5, 0x00 },
+      { INSTR_OPC_SB,   'S', ENC_OPCODE_STORE, 0, 0x00 },
+      { INSTR_OPC_SH,   'S', ENC_OPCODE_STORE, 1, 0x00 },
+      { INSTR_OPC_SW,   'S', ENC_OPCODE_STORE, 2, 0x00 },
       { -1 }
    };
    const t_encInstrData *info;
@@ -146,6 +149,9 @@ int encodeInstruction(t_instruction instr, t_data *res)
          break;
       case 'I':
          buf = encPackIFormat(info->opcode, info->funct3, instr.dest, instr.src1, instr.immediate | info->funct7 << 5);
+         break;
+      case 'S':
+         buf = encPackSFormat(info->opcode, info->funct3, instr.src1, instr.src2, instr.immediate | info->funct7 << 5);
          break;
       default:
          return 0;

@@ -309,6 +309,9 @@ static t_tokenID lexConsumeIdentifierOrKeyword(t_lexer *lex, char firstChar)
       {   "lw", TOK_MNEMONIC, INSTR_OPC_LW}, 
       {  "lbu", TOK_MNEMONIC, INSTR_OPC_LBU}, 
       {  "lhu", TOK_MNEMONIC, INSTR_OPC_LHU}, 
+      {   "sb", TOK_MNEMONIC, INSTR_OPC_SB}, 
+      {   "sh", TOK_MNEMONIC, INSTR_OPC_SH}, 
+      {   "sw", TOK_MNEMONIC, INSTR_OPC_SW}, 
       {NULL, TOK_UNRECOGNIZED}};
 #define KEYWORD_MAX 10
    char kwbuf[KEYWORD_MAX+1];
