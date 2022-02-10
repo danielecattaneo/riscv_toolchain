@@ -21,6 +21,10 @@ enum {
    TOK_SPACE,
    TOK_WORD,
    TOK_GLOBAL,
+   TOK_HI,
+   TOK_LO,
+   TOK_PCREL_HI,
+   TOK_PCREL_LO,
    TOK_MNEMONIC
 };
 

@@ -96,6 +96,35 @@ size_t encGetInstrLength(t_instruction instr)
 }
 
 
+static uint32_t encResolveImmediate(t_instruction instr, uint32_t pc)
+{
+   uint32_t res;
+
+   if (instr.immMode == INSTR_IMM_CONST) {
+      res = instr.constant;
+   } else {
+      res = objLabelGetPointer(instr.label);
+      switch (instr.immMode) {
+         case INSTR_IMM_LBL_LO12:
+            res &= 0xFFF;
+            break;
+         case INSTR_IMM_LBL_HI20:
+            res = (res >> 12) & 0xFFFFF;
+            break;
+         case INSTR_IMM_LBL_PCREL_LO12:
+            res = (res - pc) & 0xFFF;
+            break;
+         case INSTR_IMM_LBL_PCREL_HI20:
+            res = ((res - pc) >> 12) & 0xFFF;
+            break;
+         default:
+            assert("invalid immediate encoding");
+      }
+   }
+
+   return res;
+} 
+
 typedef struct t_encInstrData {
    t_instrOpcode instID;
    char type;
@@ -104,7 +133,7 @@ typedef struct t_encInstrData {
    int funct7;  /* also used for immediates */
 } t_encInstrData;
 
-static uint32_t encPhysicalInstruction(t_instruction instr)
+static uint32_t encPhysicalInstruction(t_instruction instr, uint32_t pc)
 {
    static const t_encInstrData opInstData[] = {
       { INSTR_OPC_ADD,    'R', ENC_OPCODE_OP,     0, 0x00      },
@@ -139,7 +168,7 @@ static uint32_t encPhysicalInstruction(t_instruction instr)
       { -1 }
    };
    const t_encInstrData *info;
-   uint32_t res;
+   uint32_t res, imm;
 
    for (info = opInstData; info->instID != -1; info++) {
       if (info->instID == instr.opcode)
@@ -152,10 +181,12 @@ static uint32_t encPhysicalInstruction(t_instruction instr)
          res = encPackRFormat(info->opcode, info->funct3, info->funct7, instr.dest, instr.src1, instr.src2);
          break;
       case 'I':
-         res = encPackIFormat(info->opcode, info->funct3, instr.dest, instr.src1, instr.immediate | info->funct7);
+         imm = encResolveImmediate(instr, pc);
+         res = encPackIFormat(info->opcode, info->funct3, instr.dest, instr.src1, imm | info->funct7);
          break;
       case 'S':
-         res = encPackSFormat(info->opcode, info->funct3, instr.src1, instr.src2, instr.immediate | info->funct7);
+         imm = encResolveImmediate(instr, pc);
+         res = encPackSFormat(info->opcode, info->funct3, instr.src1, instr.src2, imm | info->funct7);
          break;
       default:
          assert("invalid instruction encoding type");
@@ -164,7 +195,7 @@ static uint32_t encPhysicalInstruction(t_instruction instr)
 }
 
 
-int encodeInstruction(t_instruction instr, t_data *res)
+int encodeInstruction(t_instruction instr, uint32_t pc, t_data *res)
 {
    int i, mInstSz = 0;
    t_instruction mInstBuf[3] = { 0 };
@@ -176,7 +207,8 @@ int encodeInstruction(t_instruction instr, t_data *res)
          mInstBuf[mInstSz].opcode = INSTR_OPC_ADDI;
          mInstBuf[mInstSz].dest = 0;
          mInstBuf[mInstSz].src1 = 0;
-         mInstBuf[mInstSz].immediate = 0;
+         mInstBuf[mInstSz].immMode = INSTR_IMM_CONST;
+         mInstBuf[mInstSz].constant = 0;
          mInstSz++;
          break;
       default:
@@ -186,7 +218,7 @@ int encodeInstruction(t_instruction instr, t_data *res)
    res->initialized = 1;
    res->dataSize = 0;
    for (i = 0; i < mInstSz; i++) {
-      buf = encPhysicalInstruction(mInstBuf[i]);
+      buf = encPhysicalInstruction(mInstBuf[i], pc);
       res->data[res->dataSize++] = buf & 0xFF;
       res->data[res->dataSize++] = (buf >> 8) & 0xFF;
       res->data[res->dataSize++] = (buf >> 16) & 0xFF;

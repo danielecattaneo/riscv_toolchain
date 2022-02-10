@@ -197,8 +197,15 @@ uint32_t objSecGetSize(t_objSection *sec)
 }
 
 
+int objLabelIsDeclared(t_objLabel *lbl)
+{
+   return lbl->pointer != NULL;
+}
+
 uint32_t objLabelGetPointer(t_objLabel *lbl)
 {
+   if (!lbl->pointer)
+      return 0;
    return lbl->pointer->address;
 }
 
@@ -238,13 +245,15 @@ void objMaterializeAddresses(t_object *obj)
 
 void objSecMaterializeInstructions(t_objSection *sec)
 {
-   t_data tmp;
    t_objSecItem *itm;
 
    for (itm = sec->items; itm != NULL; itm = itm->next) {
+      t_data tmp = { 0 };
+
       if (itm->class != OBJ_SEC_ITM_CLASS_INSTR)
          continue;
-      encodeInstruction(itm->body.instr, &tmp);
+      
+      encodeInstruction(itm->body.instr, itm->address, &tmp);
       itm->class = OBJ_SEC_ITM_CLASS_DATA;
       itm->body.data = tmp;
    }
@@ -274,8 +283,9 @@ static void objSecDump(t_objSection *sec)
          printf("    Dest = %d,\n", itm->body.instr.dest);
          printf("    Src1 = %d,\n", itm->body.instr.src1);
          printf("    Src2 = %d,\n", itm->body.instr.src2);
-         printf("    Immediate = %d,\n", itm->body.instr.immediate);
-         printf("    Label = %p,\n", (void *)itm->body.instr.label);
+         printf("    Immediate mode = %d,\n", itm->body.instr.immMode);
+         printf("      Constant = %d,\n", itm->body.instr.constant);
+         printf("      Label = %p,\n", (void *)itm->body.instr.label);
       } else if (itm->class == OBJ_SEC_ITM_CLASS_DATA) {
          printf("    DataSize = %ld,\n", itm->body.data.dataSize);
          printf("    Initialized = %d,\n", itm->body.data.initialized);

@@ -46,7 +46,18 @@ enum {
    INSTR_OPC_SW,
    INSTR_OPC_NOP,
    INSTR_OPC_ECALL,
-   INSTR_OPC_EBREAK
+   INSTR_OPC_EBREAK,
+   INSTR_OPC_LUI,
+   INSTR_OPC_AUIPC
+};
+
+typedef int t_instrImmMode;
+enum {
+   INSTR_IMM_CONST,
+   INSTR_IMM_LBL_LO12,
+   INSTR_IMM_LBL_HI20,
+   INSTR_IMM_LBL_PCREL_LO12,
+   INSTR_IMM_LBL_PCREL_HI20
 };
 
 typedef struct t_instruction {
@@ -54,7 +65,8 @@ typedef struct t_instruction {
    t_instrRegID dest;
    t_instrRegID src1;
    t_instrRegID src2;
-   int32_t immediate;
+   t_instrImmMode immMode;
+   int32_t constant;
    t_objLabel *label;
 } t_instruction;
 
@@ -98,6 +110,7 @@ t_objSecItem *objSecGetItemList(t_objSection *sec);
 uint32_t objSecGetStart(t_objSection *sec);
 uint32_t objSecGetSize(t_objSection *sec);
 
+int objLabelIsDeclared(t_objLabel *lbl);
 uint32_t objLabelGetPointer(t_objLabel *lbl);
 
 void objMaterializeAddresses(t_object *obj);

@@ -243,6 +243,37 @@ static t_tokenID lexConsumeDirective(t_lexer *lex, char firstChar)
 }
 
 
+static t_tokenID lexConsumeAddressing(t_lexer *lex, char firstChar)
+{
+#define DIRECTIVE_MAX 10
+   char kwbuf[DIRECTIVE_MAX+1];
+   int i;
+   char next;
+
+   next = lexGetChar(lex);
+   i = 0;
+   while ((isalnum(next) || next == '_') && i < DIRECTIVE_MAX) {
+      kwbuf[i++] = next;
+      next = lexGetChar(lex);
+   }
+   kwbuf[i] = '\0';
+   lexPutBack(lex, 1);
+
+   if (i >= DIRECTIVE_MAX)
+      return TOK_UNRECOGNIZED;
+   
+   if (strcasecmp("hi", kwbuf) == 0)
+      return TOK_HI;
+   if (strcasecmp("lo", kwbuf) == 0)
+      return TOK_LO;
+   if (strcasecmp("pcrel_hi", kwbuf) == 0)
+      return TOK_PCREL_HI;
+   if (strcasecmp("pcrel_lo", kwbuf) == 0)
+      return TOK_PCREL_LO;
+   return TOK_UNRECOGNIZED;
+}
+
+
 typedef struct t_keywordData {
    const char *text;
    t_tokenID id;
@@ -399,6 +430,9 @@ t_tokenID lexNextToken(t_lexer *lex)
    }
    if (next == '.') {
       return lexConsumeDirective(lex, next);
+   }
+   if (next == '%') {
+      return lexConsumeAddressing(lex, next);
    }
    if (isalnum(next) || next == '_') {
       return lexConsumeIdentifierOrKeyword(lex, next);

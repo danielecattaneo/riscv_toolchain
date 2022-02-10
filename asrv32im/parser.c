@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 #include "parser.h"
 
 
@@ -80,7 +81,7 @@ static t_parserError parserExpect(t_parserState *state, t_tokenID tok, const cha
 }
 
 
-t_parserError expectRegister(t_parserState *state, t_instrRegID *res, int last)
+static t_parserError expectRegister(t_parserState *state, t_instrRegID *res, int last)
 {
    if (parserExpect(state, TOK_REGISTER, "expected a register") != P_ACCEPT)
       return P_SYN_ERROR;
@@ -90,7 +91,7 @@ t_parserError expectRegister(t_parserState *state, t_instrRegID *res, int last)
    return P_ACCEPT;
 }
 
-t_parserError expectNumber(t_parserState *state, int32_t *res, int32_t min, int32_t max)
+static t_parserError expectNumber(t_parserState *state, int32_t *res, int32_t min, int32_t max)
 {
    int32_t tmp;
 
@@ -103,6 +104,78 @@ t_parserError expectNumber(t_parserState *state, int32_t *res, int32_t min, int3
       return P_SYN_ERROR;
    }
    *res = tmp;
+   return P_ACCEPT;
+}
+
+static t_parserError expectLabel(t_parserState *state, t_instruction *instr)
+{
+   char *tmp;
+   
+   if (parserExpect(state, TOK_ID, "expected a label identifier") != P_ACCEPT)
+      return P_SYN_ERROR;
+   
+   tmp = lexGetLastTokenText(state->lex);
+   instr->label = objGetLabel(state->object, tmp);
+   free(tmp);
+   return P_ACCEPT;
+}
+
+typedef int t_immSizeClass;
+enum {
+   IMM_SIZE_5,
+   IMM_SIZE_12,
+   IMM_SIZE_20
+};
+
+static t_parserError expectImmediate(t_parserState *state, t_instruction *instr, t_immSizeClass size)
+{
+   int32_t min, max;
+
+   if (parserAccept(state, TOK_LO) == P_ACCEPT) {
+      instr->immMode = INSTR_IMM_LBL_LO12;
+   } else if (parserAccept(state, TOK_HI) == P_ACCEPT) {
+      instr->immMode = INSTR_IMM_LBL_HI20;
+   } else if (parserAccept(state, TOK_PCREL_LO) == P_ACCEPT) {
+      instr->immMode = INSTR_IMM_LBL_PCREL_LO12;
+   } else if (parserAccept(state, TOK_PCREL_HI) == P_ACCEPT) {
+      instr->immMode = INSTR_IMM_LBL_PCREL_HI20;
+   } else {
+      instr->immMode = INSTR_IMM_CONST;
+   }
+
+   if (instr->immMode == INSTR_IMM_CONST) {
+      if (size == IMM_SIZE_5) {
+         min = 0;
+         max = 31;
+      } else if (size == IMM_SIZE_12) {
+         min = -0x800;
+         max = 0x7FF;
+      } else if (size == IMM_SIZE_20) {
+         min = -0x80000;
+         max = 0x7FFFF;
+      } else
+         assert("invalid immediate size");
+      
+      return expectNumber(state, &instr->constant, min, max);
+   }
+   
+   if (size < IMM_SIZE_12) {
+      parserEmitError(state, "immediate too large");
+      return P_SYN_ERROR;
+   }
+   if (instr->immMode == INSTR_IMM_LBL_HI20 || instr->immMode == INSTR_IMM_LBL_PCREL_HI20) {
+      if (size < IMM_SIZE_20) {
+         parserEmitError(state, "immediate too large");
+         return P_SYN_ERROR;
+      }
+   }
+   
+   if (parserExpect(state, TOK_LPAR, "expected left parenthesis") != P_ACCEPT)
+      return P_SYN_ERROR;
+   if (expectLabel(state, instr) != P_ACCEPT)
+      return P_SYN_ERROR;
+   if (parserExpect(state, TOK_RPAR, "expected right parenthesis") != P_ACCEPT)
+      return P_SYN_ERROR;
    return P_ACCEPT;
 }
 
@@ -199,7 +272,7 @@ static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
 static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken)
 {
    t_instrFormat format;
-   int32_t min, max;
+   t_immSizeClass immSize;
    t_parserError err;
    t_instruction instr = { 0 };
 
@@ -225,13 +298,11 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
             return P_SYN_ERROR;
          if (instr.opcode == INSTR_OPC_SLLI || instr.opcode == INSTR_OPC_SRLI ||
                instr.opcode == INSTR_OPC_SRAI) {
-            min = 0;
-            max = 31;
+            immSize = IMM_SIZE_5;
          } else {
-            min = -0x800;
-            max = 0x7FF;
+            immSize = IMM_SIZE_12;
          }
-         if (expectNumber(state, &instr.immediate, min, max) != P_ACCEPT)
+         if (expectImmediate(state, &instr, immSize) != P_ACCEPT)
             return P_SYN_ERROR;
          break;
 
@@ -243,7 +314,7 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
             err = expectRegister(state, &instr.src2, 0);
          if (err != P_ACCEPT)
             return P_SYN_ERROR;
-         if (expectNumber(state, &instr.immediate, -0x800, 0x7FF) != P_ACCEPT)
+         if (expectImmediate(state, &instr, IMM_SIZE_12) != P_ACCEPT)
             return P_SYN_ERROR;
          if (parserExpect(state, TOK_LPAR, "expected parenthesis") != P_ACCEPT)
             return P_SYN_ERROR;
