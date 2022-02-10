@@ -247,6 +247,44 @@ void objSecMaterializeInstructions(t_objSection *sec)
 {
    t_objSecItem *itm;
 
+   /* %pcrel_lo addressing needs to compensate for the fact that the instr.
+    * that loads the low part has a different PC than the one that loads the
+    * high part, so the argument does not point to the symbol address to load
+    * but to the instruction that loads the high part of the address...
+    * This can go wrong in too many ways (i.e. more than zero ways) */
+   for (itm = sec->items; itm != NULL; itm = itm->next) {
+      t_objLabel *otherInstrLbl, *actualLbl;
+      t_objSecItem *otherInstr;
+      uint32_t pc, tgt;
+
+      if (itm->class != OBJ_SEC_ITM_CLASS_INSTR)
+         continue;
+      if (itm->body.instr.immMode != INSTR_IMM_LBL_PCREL_LO12)
+         continue;
+      
+      otherInstrLbl = itm->body.instr.label;
+      otherInstr = otherInstrLbl->pointer;
+      while (otherInstr && otherInstr->class == OBJ_SEC_ITM_CLASS_VOID)
+         otherInstr = otherInstr->next;
+      if (!otherInstr) {
+         fprintf(stderr, "label %s not declared\n", otherInstrLbl->name);
+         exit(1);
+      }
+      if (otherInstr->class != OBJ_SEC_ITM_CLASS_INSTR) {
+         fprintf(stderr, "argument to %%pcrel_lo must be a label to an instruction\n");
+         exit(1);
+      }
+      if (otherInstr->body.instr.immMode != INSTR_IMM_LBL_PCREL_HI20) {
+         fprintf(stderr, "argument to %%pcrel_lo must be a label to an instruction using %%pcrel_hi\n");
+         exit(1);
+      }
+      actualLbl = otherInstr->body.instr.label;
+      pc = otherInstr->address;
+      tgt = objLabelGetPointer(actualLbl);
+      itm->body.instr.constant = (tgt - pc) & 0xFFF;
+      itm->body.instr.immMode = INSTR_IMM_CONST;
+   }
+
    for (itm = sec->items; itm != NULL; itm = itm->next) {
       t_data tmp = { 0 };
 

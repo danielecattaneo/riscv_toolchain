@@ -256,7 +256,11 @@ static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
       case OPC_SW_G:
          return FORMAT_STORE_GL;
       case OPC_LI:
+      */
+      case INSTR_OPC_LUI:
+      case INSTR_OPC_AUIPC:
          return FORMAT_LI;
+      /*
       case OPC_LA:
          return FORMAT_LA;
       */
@@ -321,6 +325,13 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
          if (expectRegister(state, &instr.src1, 1) != P_ACCEPT)
             return P_SYN_ERROR;
          if (parserExpect(state, TOK_RPAR, "expected parenthesis") != P_ACCEPT)
+            return P_SYN_ERROR;
+         break;
+
+      case FORMAT_LI:
+         if (expectRegister(state, &instr.dest, 0) != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (expectImmediate(state, &instr, IMM_SIZE_20) != P_ACCEPT)
             return P_SYN_ERROR;
          break;
 

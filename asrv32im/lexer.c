@@ -345,7 +345,9 @@ static t_tokenID lexConsumeIdentifierOrKeyword(t_lexer *lex, char firstChar)
       {    "sw", TOK_MNEMONIC, INSTR_OPC_SW}, 
       {   "nop", TOK_MNEMONIC, INSTR_OPC_NOP}, 
       { "ecall", TOK_MNEMONIC, INSTR_OPC_ECALL}, 
-      {"ebreak", TOK_MNEMONIC, INSTR_OPC_EBREAK}, 
+      {"ebreak", TOK_MNEMONIC, INSTR_OPC_EBREAK},
+      {   "lui", TOK_MNEMONIC, INSTR_OPC_LUI},
+      { "auipc", TOK_MNEMONIC, INSTR_OPC_AUIPC},
       {    NULL, TOK_UNRECOGNIZED}
    };
 #define KEYWORD_MAX 10

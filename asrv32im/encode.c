@@ -104,18 +104,19 @@ static uint32_t encResolveImmediate(t_instruction instr, uint32_t pc)
       res = instr.constant;
    } else {
       res = objLabelGetPointer(instr.label);
+
+      if (instr.immMode == INSTR_IMM_LBL_PCREL_LO12 || 
+            instr.immMode == INSTR_IMM_LBL_PCREL_HI20)
+         res = res - pc;
+
       switch (instr.immMode) {
          case INSTR_IMM_LBL_LO12:
+         case INSTR_IMM_LBL_PCREL_LO12:
             res &= 0xFFF;
             break;
          case INSTR_IMM_LBL_HI20:
-            res = (res >> 12) & 0xFFFFF;
-            break;
-         case INSTR_IMM_LBL_PCREL_LO12:
-            res = (res - pc) & 0xFFF;
-            break;
          case INSTR_IMM_LBL_PCREL_HI20:
-            res = ((res - pc) >> 12) & 0xFFF;
+            res = ((res >> 12) + (res & 0x800 ? 1 : 0)) & 0xFFFFF;
             break;
          default:
             assert("invalid immediate encoding");
@@ -160,6 +161,8 @@ static uint32_t encPhysicalInstruction(t_instruction instr, uint32_t pc)
       { INSTR_OPC_LW,     'I', ENC_OPCODE_LOAD,   2, 0x00 << 5 },
       { INSTR_OPC_LBU,    'I', ENC_OPCODE_LOAD,   4, 0x00 << 5 },
       { INSTR_OPC_LHU,    'I', ENC_OPCODE_LOAD,   5, 0x00 << 5 },
+      { INSTR_OPC_LUI,    'U', ENC_OPCODE_LUI,    0, 0         },
+      { INSTR_OPC_AUIPC,  'U', ENC_OPCODE_AUIPC,  0, 0         },
       { INSTR_OPC_SB,     'S', ENC_OPCODE_STORE,  0, 0x00 << 5 },
       { INSTR_OPC_SH,     'S', ENC_OPCODE_STORE,  1, 0x00 << 5 },
       { INSTR_OPC_SW,     'S', ENC_OPCODE_STORE,  2, 0x00 << 5 },
@@ -187,6 +190,10 @@ static uint32_t encPhysicalInstruction(t_instruction instr, uint32_t pc)
       case 'S':
          imm = encResolveImmediate(instr, pc);
          res = encPackSFormat(info->opcode, info->funct3, instr.src1, instr.src2, imm | info->funct7);
+         break;
+      case 'U':
+         imm = encResolveImmediate(instr, pc);
+         res = encPackUFormat(info->opcode, instr.dest, imm);
          break;
       default:
          assert("invalid instruction encoding type");
