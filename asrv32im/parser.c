@@ -191,20 +191,18 @@ static t_parserError expectImmediate(t_parserState *state, t_instruction *instr,
 
 typedef int t_instrFormat;
 enum {
-   FORMAT_OP,         /* mnemonic rd, rs1, rs2    */
-   FORMAT_OPIMM,      /* mnemonic rd, rs1, imm    */
-   FORMAT_LOAD,       /* mnemonic rd, imm(rs1)    */
-   FORMAT_STORE,      /* mnemonic rs2, imm(rs1)   */
-   FORMAT_LUI,        /* mnemonic rd, imm         */
-   FORMAT_LI,         /* mnemonic rd, number      */
-   FORMAT_LA,         /* mnemonic rd, label       */
-   FORMAT_JAL,        /* mnemonic rd, label       */
-   FORMAT_JALR,       /* mnemonic rs1, rs2, imm   */
-   FORMAT_BRANCH,     /* mnemonic rs1, rs2, label */
-   FORMAT_SYSTEM,     /* mnemonic                 */
-
-   FORMAT_STORE_GL,   /* mnemonic rs2, label, rs1 */
-   FORMAT_JUMP        /* mnemonic label           */
+   FORMAT_OP,         /* mnemonic rd, rs1, rs2               */
+   FORMAT_OPIMM,      /* mnemonic rd, rs1, imm               */
+   FORMAT_LOAD,       /* mnemonic rd, imm(rs1) / label       */
+   FORMAT_STORE,      /* mnemonic rs2, imm(rs1) / label, rd  */
+   FORMAT_LUI,        /* mnemonic rd, imm                    */
+   FORMAT_LI,         /* mnemonic rd, number                 */
+   FORMAT_LA,         /* mnemonic rd, label                  */
+   FORMAT_JAL,        /* mnemonic rd, label                  */
+   FORMAT_JALR,       /* mnemonic rs1, rs2, imm              */
+   FORMAT_BRANCH,     /* mnemonic rs1, rs2, label            */
+   FORMAT_JUMP,       /* mnemonic label                      */
+   FORMAT_SYSTEM      /* mnemonic                            */
 };
 
 static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
@@ -239,16 +237,18 @@ static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
       case INSTR_OPC_SLTI :
       case INSTR_OPC_SLTIU:
          return FORMAT_OPIMM;
-      /*
-      case OPC_J:
+      case INSTR_OPC_J:
          return FORMAT_JUMP;
-      */
       case INSTR_OPC_BEQ :
       case INSTR_OPC_BNE :
       case INSTR_OPC_BLT :
       case INSTR_OPC_BLTU:
       case INSTR_OPC_BGE :
       case INSTR_OPC_BGEU:
+      case INSTR_OPC_BGT:
+      case INSTR_OPC_BLE:
+      case INSTR_OPC_BGTU:
+      case INSTR_OPC_BLEU:
          return FORMAT_BRANCH;
       case INSTR_OPC_LB:
       case INSTR_OPC_LH:
@@ -256,18 +256,10 @@ static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
       case INSTR_OPC_LBU:
       case INSTR_OPC_LHU:
          return FORMAT_LOAD;
-      /*
-      case OPC_LW_G:
-         return FORMAT_LOAD_GL;
-      */
       case INSTR_OPC_SB:
       case INSTR_OPC_SH:
       case INSTR_OPC_SW:
          return FORMAT_STORE;
-      /*
-      case OPC_SW_G:
-         return FORMAT_STORE_GL;
-      */
       case INSTR_OPC_LI:
          return FORMAT_LI;
       case INSTR_OPC_LA:
@@ -406,6 +398,12 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
             return P_SYN_ERROR;
          if (expectRegister(state, &instr.src2, 0) != P_ACCEPT)
             return P_SYN_ERROR;
+         if (expectLabel(state, &instr) != P_ACCEPT)
+            return P_SYN_ERROR;
+         instr.immMode = INSTR_IMM_LBL;
+         break;
+
+      case FORMAT_JUMP:
          if (expectLabel(state, &instr) != P_ACCEPT)
             return P_SYN_ERROR;
          instr.immMode = INSTR_IMM_LBL;

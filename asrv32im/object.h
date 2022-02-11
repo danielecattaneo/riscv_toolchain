@@ -76,7 +76,12 @@ enum {
    INSTR_OPC_LHU_G,
    INSTR_OPC_SB_G,
    INSTR_OPC_SH_G,
-   INSTR_OPC_SW_G
+   INSTR_OPC_SW_G,
+   INSTR_OPC_J,
+   INSTR_OPC_BGT,
+   INSTR_OPC_BLE,
+   INSTR_OPC_BGTU,
+   INSTR_OPC_BLEU
 };
 
 typedef int t_instrImmMode;

@@ -279,6 +279,33 @@ int encExpandPseudoInstruction(t_instruction instr, t_instruction mInstBuf[MAX_E
          mInstSz++;
          break;
 
+      case INSTR_OPC_BGT:
+         mInstBuf[mInstSz].opcode = INSTR_OPC_BLT;
+         goto all_branches;
+      case INSTR_OPC_BLE:
+         mInstBuf[mInstSz].opcode = INSTR_OPC_BGE;
+         goto all_branches;
+      case INSTR_OPC_BGTU:
+         mInstBuf[mInstSz].opcode = INSTR_OPC_BLTU;
+         goto all_branches;
+      case INSTR_OPC_BLEU:
+         mInstBuf[mInstSz].opcode = INSTR_OPC_BGEU;
+      all_branches:
+         mInstBuf[mInstSz].src1 = instr.src2;
+         mInstBuf[mInstSz].src2 = instr.src1;
+         mInstBuf[mInstSz].label = instr.label;
+         mInstBuf[mInstSz].immMode = instr.immMode;
+         mInstSz++;
+         break;
+
+      case INSTR_OPC_J:
+         mInstBuf[mInstSz].opcode = INSTR_OPC_JAL;
+         mInstBuf[mInstSz].dest = 0;
+         mInstBuf[mInstSz].immMode = INSTR_IMM_LBL;
+         mInstBuf[mInstSz].label = instr.label;
+         mInstSz++;
+         break;
+
       default:
          mInstBuf[mInstSz++] = instr;
    }
