@@ -348,6 +348,8 @@ static t_tokenID lexConsumeIdentifierOrKeyword(t_lexer *lex, char firstChar)
       {"ebreak", TOK_MNEMONIC, INSTR_OPC_EBREAK},
       {   "lui", TOK_MNEMONIC, INSTR_OPC_LUI},
       { "auipc", TOK_MNEMONIC, INSTR_OPC_AUIPC},
+      {   "jal", TOK_MNEMONIC, INSTR_OPC_JAL},
+      {  "jalr", TOK_MNEMONIC, INSTR_OPC_JALR},
       {    NULL, TOK_UNRECOGNIZED}
    };
 #define KEYWORD_MAX 10

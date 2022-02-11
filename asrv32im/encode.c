@@ -82,9 +82,9 @@ static uint32_t encPackJFormat(int opcode, int rd, int32_t imm)
    uint32_t res = 0;
    res |= SHIFT_MASK(opcode, 0, 7);
    res |= SHIFT_MASK(rd, 7, 12);
-   res |= SHIFT_MASK(imm, 12, 20);
+   res |= SHIFT_MASK(imm >> 12, 12, 20);
    res |= SHIFT_MASK(imm >> 11, 20, 21);
-   res |= SHIFT_MASK(imm >> 12, 21, 31);
+   res |= SHIFT_MASK(imm >> 1, 21, 31);
    res |= SHIFT_MASK(imm >> 20, 31, 32);
    return res;
 }
@@ -136,6 +136,8 @@ int encPhysicalInstruction(t_instruction instr, uint32_t pc, t_data *res)
       { INSTR_OPC_SB,     'S', ENC_OPCODE_STORE,  0, 0x00 << 5 },
       { INSTR_OPC_SH,     'S', ENC_OPCODE_STORE,  1, 0x00 << 5 },
       { INSTR_OPC_SW,     'S', ENC_OPCODE_STORE,  2, 0x00 << 5 },
+      { INSTR_OPC_JAL,    'J', ENC_OPCODE_JAL,    0, 0         },
+      { INSTR_OPC_JALR,   'I', ENC_OPCODE_JALR,   0, 0         },
       { INSTR_OPC_ECALL,  'I', ENC_OPCODE_SYSTEM, 0, 0         },
       { INSTR_OPC_EBREAK, 'I', ENC_OPCODE_SYSTEM, 0, 1         },
       { -1 }
@@ -161,6 +163,9 @@ int encPhysicalInstruction(t_instruction instr, uint32_t pc, t_data *res)
          break;
       case 'U':
          buf = encPackUFormat(info->opcode, instr.dest, instr.constant);
+         break;
+      case 'J':
+         buf = encPackJFormat(info->opcode, instr.dest, instr.constant);
          break;
       default:
          assert("invalid instruction encoding type");
@@ -201,17 +206,30 @@ int encResolveImmediates(t_instruction *instr, uint32_t pc)
 {
    t_objLabel *otherInstrLbl, *actualLbl;
    t_objSecItem *otherInstr;
-   uint32_t imm, tgt, otherPc;
+   int32_t imm;
+   uint32_t tgt, otherPc;
 
    if (instr->immMode == INSTR_IMM_CONST)
       return 1;
    
    if (!objLabelGetPointedItem(instr->label)) {
-      fprintf(stderr, "label %s used but not defined!\n", objLabelGetName(instr->label));
+      fprintf(stderr, "label \"%s\" used but not defined!\n", objLabelGetName(instr->label));
       return 0;
    }
 
    switch (instr->immMode) {
+      case INSTR_IMM_LBL:
+         imm = objLabelGetPointer(instr->label) - pc;
+         if (instr->opcode == INSTR_OPC_JAL && (imm < -0x100000 || imm > 0xFFFFF)) {
+            fprintf(stderr, "JAL to label \"%s\" too far!\n", objLabelGetName(instr->label));
+            return 0;
+         }
+         if (instr->opcode == INSTR_OPC_JALR && (imm < -0x800 || imm > 0x7FF)) {
+            fprintf(stderr, "JALR to label \"%s\" too far!\n", objLabelGetName(instr->label));
+            return 0;
+         }
+         break;
+
       case INSTR_IMM_LBL_LO12:
          imm = objLabelGetPointer(instr->label);
          imm &= 0xFFF;
@@ -231,7 +249,7 @@ int encResolveImmediates(t_instruction *instr, uint32_t pc)
          otherInstrLbl = instr->label;
          otherInstr = objLabelGetPointedItem(otherInstrLbl);
          if (!otherInstr) {
-            fprintf(stderr, "label %s used but not defined\n", objLabelGetName(otherInstrLbl));
+            fprintf(stderr, "label \"%s\" used but not defined\n", objLabelGetName(otherInstrLbl));
             return 0;
          } else if (otherInstr->class != OBJ_SEC_ITM_CLASS_INSTR) {
             fprintf(stderr, "argument to %%pcrel_lo must be a label to an instruction\n");
@@ -242,7 +260,7 @@ int encResolveImmediates(t_instruction *instr, uint32_t pc)
          }
          actualLbl = otherInstr->body.instr.label;
          if (!objLabelGetPointedItem(actualLbl)) {
-            fprintf(stderr, "label %s used but not defined!\n", objLabelGetName(actualLbl));
+            fprintf(stderr, "label \"%s\" used but not defined!\n", objLabelGetName(actualLbl));
             return 0;
          }
          otherPc = otherInstr->address;

@@ -185,14 +185,16 @@ enum {
    FORMAT_OP,         /* mnemonic rd, rs1, rs2    */
    FORMAT_OPIMM,      /* mnemonic rd, rs1, imm    */
    FORMAT_LOAD,       /* mnemonic rd, imm(rs1)    */
-   FORMAT_LOAD_GL,    /* mnemonic rd, label       */
    FORMAT_STORE,      /* mnemonic rs2, imm(rs1)   */
+   FORMAT_LI,         /* mnemonic rd, imm         */
+   FORMAT_JAL,        /* mnemonic rd, label       */
+   FORMAT_JALR,       /* mnemonic rs1, rs2, imm   */
+   FORMAT_SYSTEM,     /* mnemonic                 */
+
    FORMAT_STORE_GL,   /* mnemonic rs2, label, rs1 */
    FORMAT_BRANCH,     /* mnemonic rs1, rs2, label */
    FORMAT_JUMP,       /* mnemonic label           */
-   FORMAT_LI,         /* mnemonic rd, imm         */
-   FORMAT_LA,         /* mnemonic rd, label       */
-   FORMAT_SYSTEM      /* mnemonic                 */
+   FORMAT_LA          /* mnemonic rd, label       */
 };
 
 static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
@@ -264,6 +266,10 @@ static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
       case OPC_LA:
          return FORMAT_LA;
       */
+      case INSTR_OPC_JAL:
+         return FORMAT_JAL;
+      case INSTR_OPC_JALR:
+         return FORMAT_JALR;
       case INSTR_OPC_NOP:
       case INSTR_OPC_ECALL:
       case INSTR_OPC_EBREAK:
@@ -332,6 +338,27 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
          if (expectRegister(state, &instr.dest, 0) != P_ACCEPT)
             return P_SYN_ERROR;
          if (expectImmediate(state, &instr, IMM_SIZE_20) != P_ACCEPT)
+            return P_SYN_ERROR;
+         break;
+
+      case FORMAT_JAL:
+         if (expectRegister(state, &instr.dest, 0) != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (expectLabel(state, &instr) != P_ACCEPT)
+            return P_SYN_ERROR;
+         instr.immMode = INSTR_IMM_LBL;
+         break;
+
+      case FORMAT_JALR:
+         if (expectRegister(state, &instr.dest, 0) != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (expectImmediate(state, &instr, IMM_SIZE_12) != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (parserExpect(state, TOK_LPAR, "expected parenthesis") != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (expectRegister(state, &instr.src1, 1) != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (parserExpect(state, TOK_RPAR, "expected parenthesis") != P_ACCEPT)
             return P_SYN_ERROR;
          break;
 
@@ -425,7 +452,7 @@ static t_parserError expectLine(t_parserState *state)
          parserEmitError(state, "label already declared");
       free(temp);
    }
-   
+
    if (parserAccept(state, TOK_NEWLINE) == P_ACCEPT)
       return P_ACCEPT;
    if (expectLineContent(state) != P_ACCEPT)
