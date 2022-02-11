@@ -37,7 +37,7 @@ int isaDisassemble(uint32_t instr, char *out, int bufsz)
          rd = ISA_INST_RD(instr);
          rs1 = ISA_INST_RS1(instr);
          imm = ISA_INST_I_IMM12_SEXT(instr);
-         return snprintf(out, bufsz, "JALR x%d, x%d, *%+"PRId32, rd, rs1, imm);
+         return snprintf(out, bufsz, "JALR x%d, %"PRId32"(x%d)", rd, imm, rs1);
       case ISA_INST_OPCODE_LUI:
          rd = ISA_INST_RD(instr);
          imm = ISA_INST_U_IMM20(instr);
