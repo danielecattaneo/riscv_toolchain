@@ -1,50 +1,84 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <getopt.h>
 #include "lexer.h"
 #include "parser.h"
 #include "output.h"
 
 
+void usage(const char *name)
+{
+   puts("ACSE RISC-V RV32IM assembler, (c) 2022 Politecnico di Milano");
+   printf("usage: %s [options] input\n\n", name);
+   puts("Options:");
+   puts("  -o OBJFILE    Name the output OBJFILE (default output.o)");
+   puts("  -h, --help    Displays available options");
+}
+
+
 int main(int argc, char *argv[])
 {
    FILE *fp;
-   t_lexer *lex;
-   t_tokenID tok;
-   t_object *obj;
-   char *buf;
-   int tmp;
+   t_lexer *lex = NULL;
+   t_object *obj = NULL;
+   char *name, *out;
+   int ch, res = 0;
+   static const struct option options[] = {
+      { "help",      no_argument,       NULL, 'h' },
+   };
 
-   if (argc < 3) {
-      if (argc > 0)
-         printf("usage: %s input.s output.elf\n", argv[0]);
+   name = argv[0];
+   out = "output.o";
+
+   while ((ch = getopt_long(argc, argv, "ho:", options, NULL)) != -1) {
+      switch (ch) {
+         case 'o':
+            out = optarg;
+            break;
+         case 'h':
+            usage(name);
+            return 0;
+         default:
+            usage(name);
+            return 1;
+      }
+   }
+   argc -= optind;
+   argv += optind;
+
+   if (argc < 1) {
+      usage(name);
+      return 1;
+   } else if (argc > 1) {
+      fprintf(stderr, "Cannot assemble more than one file, exiting.\n");
       return 1;
    }
-   
-   fp = fopen(argv[1], "r");
+
+   res = 1;
+   fp = fopen(argv[0], "r");
+   if (fp == NULL) {
+      fprintf(stderr, "Could not open the input file, exiting\n");
+      goto fail;
+   }
    lex = newLexer(fp);
+   if (lex == NULL) {
+      fprintf(stderr, "Could not create a lexer object, exiting\n");
+      goto fail;
+   }
    obj = parseObject(lex);
-   /*objDump(obj);*/
-   if (obj) {
-      if (!objMaterialize(obj))
-         exit(1);
-      /*objDump(obj);*/
-      tmp = outputToELF(obj, argv[2]);
-      printf("output error = %d\n", tmp);
-      deleteObject(obj);
+   if (obj == NULL)
+      goto fail;
+   if (!objMaterialize(obj))
+      goto fail;
+   if (outputToELF(obj, out) != OUT_NO_ERROR) {
+      fprintf(stderr, "Could not write to output file, exiting\n");
+      goto fail;
    }
-
-#if 0
-   tok = lexNextToken(lex);
-   while (tok != TOK_UNRECOGNIZED && tok != TOK_EOF) {
-      buf = lexGetLastTokenText(lex);
-      printf("%3d %3d:%3d \"%s\" (%d)\n", tok, lexGetLastTokenRow(lex), lexGetLastTokenColumn(lex), buf, lexGetLastNumberValue(lex));
-      free(buf);
-      tok = lexNextToken(lex);
-   }
-   printf("%3d\n", tok);
-#endif
-
+   
+   res = 0;
+fail:
    deleteLexer(lex);
-   return 0;
+   deleteObject(obj);
+   return res;
 }
 

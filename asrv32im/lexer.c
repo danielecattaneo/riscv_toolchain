@@ -44,6 +44,8 @@ t_lexer *newLexer(FILE *fp)
 
 void deleteLexer(t_lexer *lex)
 {
+   if (lex == NULL)
+      return;
    fclose(lex->fp);
    free(lex->buf);
    free(lex);
