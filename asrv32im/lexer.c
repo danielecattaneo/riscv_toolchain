@@ -200,7 +200,7 @@ static t_tokenID lexConsumeNumber(t_lexer *lex, char firstChar)
       }
    } else {
       next = firstChar;
-      while (isnumber(next))
+      while (isdigit(next))
          next = lexGetChar(lex);
    }
 
@@ -398,7 +398,7 @@ static t_tokenID lexConsumeIdentifierOrKeyword(t_lexer *lex, char firstChar)
 
    if (kwbuf[0] == 'x') {
       for (i = 1; kwbuf[i] != '\0'; i++)
-         if (!isnumber(kwbuf[i]))
+         if (!isdigit(kwbuf[i]))
             break;
       if (kwbuf[i] == '\0') {
          tmp = atoi(kwbuf+1);
@@ -452,7 +452,7 @@ t_tokenID lexNextToken(t_lexer *lex)
    if (next == ')')
       return TOK_RPAR;
 
-   if (isnumber(next) || next == '-') {
+   if (isdigit(next) || next == '-') {
       return lexConsumeNumber(lex, next);
    }
    if (next == '.') {
