@@ -96,36 +96,6 @@ size_t encGetInstrLength(t_instruction instr)
 }
 
 
-static uint32_t encResolveImmediate(t_instruction instr, uint32_t pc)
-{
-   uint32_t res;
-
-   if (instr.immMode == INSTR_IMM_CONST) {
-      res = instr.constant;
-   } else {
-      res = objLabelGetPointer(instr.label);
-
-      if (instr.immMode == INSTR_IMM_LBL_PCREL_LO12 || 
-            instr.immMode == INSTR_IMM_LBL_PCREL_HI20)
-         res = res - pc;
-
-      switch (instr.immMode) {
-         case INSTR_IMM_LBL_LO12:
-         case INSTR_IMM_LBL_PCREL_LO12:
-            res &= 0xFFF;
-            break;
-         case INSTR_IMM_LBL_HI20:
-         case INSTR_IMM_LBL_PCREL_HI20:
-            res = ((res >> 12) + (res & 0x800 ? 1 : 0)) & 0xFFFFF;
-            break;
-         default:
-            assert("invalid immediate encoding");
-      }
-   }
-
-   return res;
-} 
-
 typedef struct t_encInstrData {
    t_instrOpcode instID;
    char type;
@@ -134,7 +104,7 @@ typedef struct t_encInstrData {
    int funct7;  /* also used for immediates */
 } t_encInstrData;
 
-static uint32_t encPhysicalInstruction(t_instruction instr, uint32_t pc)
+int encPhysicalInstruction(t_instruction instr, uint32_t pc, t_data *res)
 {
    static const t_encInstrData opInstData[] = {
       { INSTR_OPC_ADD,    'R', ENC_OPCODE_OP,     0, 0x00      },
@@ -171,7 +141,7 @@ static uint32_t encPhysicalInstruction(t_instruction instr, uint32_t pc)
       { -1 }
    };
    const t_encInstrData *info;
-   uint32_t res, imm;
+   uint32_t buf, imm;
 
    for (info = opInstData; info->instID != -1; info++) {
       if (info->instID == instr.opcode)
@@ -181,34 +151,35 @@ static uint32_t encPhysicalInstruction(t_instruction instr, uint32_t pc)
 
    switch (info->type) {
       case 'R':
-         res = encPackRFormat(info->opcode, info->funct3, info->funct7, instr.dest, instr.src1, instr.src2);
+         buf = encPackRFormat(info->opcode, info->funct3, info->funct7, instr.dest, instr.src1, instr.src2);
          break;
       case 'I':
-         imm = encResolveImmediate(instr, pc);
-         res = encPackIFormat(info->opcode, info->funct3, instr.dest, instr.src1, imm | info->funct7);
+         buf = encPackIFormat(info->opcode, info->funct3, instr.dest, instr.src1, instr.constant | info->funct7);
          break;
       case 'S':
-         imm = encResolveImmediate(instr, pc);
-         res = encPackSFormat(info->opcode, info->funct3, instr.src1, instr.src2, imm | info->funct7);
+         buf = encPackSFormat(info->opcode, info->funct3, instr.src1, instr.src2, instr.constant | info->funct7);
          break;
       case 'U':
-         imm = encResolveImmediate(instr, pc);
-         res = encPackUFormat(info->opcode, instr.dest, imm);
+         buf = encPackUFormat(info->opcode, instr.dest, instr.constant);
          break;
       default:
          assert("invalid instruction encoding type");
    }
-   return res;
+
+   res->initialized = 1;
+   res->dataSize = 4;
+   res->data[0] = buf & 0xFF;
+   res->data[1] = (buf >> 8) & 0xFF;
+   res->data[2] = (buf >> 16) & 0xFF;
+   res->data[3] = (buf >> 24) & 0xFF;
+   return 1;
 }
 
 
-int encodeInstruction(t_instruction instr, uint32_t pc, t_data *res)
+int encExpandPseudoInstruction(t_instruction instr, t_instruction mInstBuf[MAX_EXP_FACTOR])
 {
-   int i, mInstSz = 0;
-   t_instruction mInstBuf[3] = { 0 };
-   uint32_t buf;
+   int mInstSz = 0;
 
-   /* resolve pseudo-instructions */
    switch (instr.opcode) {
       case INSTR_OPC_NOP:
          mInstBuf[mInstSz].opcode = INSTR_OPC_ADDI;
@@ -222,15 +193,69 @@ int encodeInstruction(t_instruction instr, uint32_t pc, t_data *res)
          mInstBuf[mInstSz++] = instr;
    }
 
-   res->initialized = 1;
-   res->dataSize = 0;
-   for (i = 0; i < mInstSz; i++) {
-      buf = encPhysicalInstruction(mInstBuf[i], pc);
-      res->data[res->dataSize++] = buf & 0xFF;
-      res->data[res->dataSize++] = (buf >> 8) & 0xFF;
-      res->data[res->dataSize++] = (buf >> 16) & 0xFF;
-      res->data[res->dataSize++] = (buf >> 24) & 0xFF;
+   return mInstSz;
+}
+
+
+int encResolveImmediates(t_instruction *instr, uint32_t pc)
+{
+   t_objLabel *otherInstrLbl, *actualLbl;
+   t_objSecItem *otherInstr;
+   uint32_t imm, tgt, otherPc;
+
+   if (instr->immMode == INSTR_IMM_CONST)
+      return 1;
+   
+   if (!objLabelGetPointedItem(instr->label)) {
+      fprintf(stderr, "label %s used but not defined!\n", objLabelGetName(instr->label));
+      return 0;
    }
+
+   switch (instr->immMode) {
+      case INSTR_IMM_LBL_LO12:
+         imm = objLabelGetPointer(instr->label);
+         imm &= 0xFFF;
+         break;
+
+      case INSTR_IMM_LBL_HI20:
+         imm = objLabelGetPointer(instr->label);
+         imm = ((imm >> 12) + (imm & 0x800 ? 1 : 0)) & 0xFFFFF;
+         break;
+
+      case INSTR_IMM_LBL_PCREL_LO12:
+         /* %pcrel_lo addressing needs to compensate for the fact that the instr.
+          * that loads the low part has a different PC than the one that loads the
+          * high part, so the argument does not point to the symbol address to load
+          * but to the instruction that loads the high part of the address...
+          * This can go wrong in too many ways (i.e. more than zero ways) */
+         otherInstrLbl = instr->label;
+         otherInstr = objLabelGetPointedItem(otherInstrLbl);
+         if (!otherInstr) {
+            fprintf(stderr, "label %s used but not defined\n", objLabelGetName(otherInstrLbl));
+            return 0;
+         } else if (otherInstr->class != OBJ_SEC_ITM_CLASS_INSTR) {
+            fprintf(stderr, "argument to %%pcrel_lo must be a label to an instruction\n");
+            return 0;
+         } else if (otherInstr->body.instr.immMode != INSTR_IMM_LBL_PCREL_HI20) {
+            fprintf(stderr, "argument to %%pcrel_lo must be a label to an instruction using %%pcrel_hi\n");
+            return 0;
+         }
+         actualLbl = otherInstr->body.instr.label;
+         if (!objLabelGetPointedItem(actualLbl)) {
+            fprintf(stderr, "label %s used but not defined!\n", objLabelGetName(actualLbl));
+            return 0;
+         }
+         otherPc = otherInstr->address;
+         imm = (objLabelGetPointer(actualLbl) - pc) & 0xFFF;
+         break;
+
+      case INSTR_IMM_LBL_PCREL_HI20:
+         imm = objLabelGetPointer(instr->label) - pc;
+         imm = ((imm >> 12) + (imm & 0x800 ? 1 : 0)) & 0xFFFFF;
+         break;
+   }
+
+   instr->constant = imm;
    return 1;
 }
 

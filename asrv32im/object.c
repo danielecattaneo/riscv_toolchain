@@ -122,19 +122,27 @@ t_objSection *objGetSection(t_object *obj, t_objSectionID id)
 }
 
 
+static void objSecInsertAfter(t_objSection *sec, t_objSecItem *item, t_objSecItem *prev)
+{
+   if (prev == NULL) {
+      item->next = sec->items;
+      if (sec->lastItem == NULL)
+         sec->lastItem = item;
+      sec->items = item;
+      return;
+   }
+
+   item->next = prev->next;
+   prev->next = item;
+   if (item->next == NULL)
+      sec->lastItem = item;
+}
+
 static void objSecAppend(t_objSection *sec, t_objSecItem *item)
 {
-   t_objSecItem *prev;
-
-   item->next = NULL;
-   prev = sec->lastItem;
-   if (prev) {
-      prev->next = item;
-      sec->lastItem = item;
-   } else {
-      sec->lastItem = sec->items = item;
-   }
+   objSecInsertAfter(sec, item, sec->lastItem);
 }
+
 
 void objSecAppendData(t_objSection *sec, t_data data)
 {
@@ -149,17 +157,23 @@ void objSecAppendData(t_objSection *sec, t_data data)
    objSecAppend(sec, itm);
 }
 
-void objSecAppendInstruction(t_objSection *sec, t_instruction instr)
+t_objSecItem *objSecInsertInstructionAfter(t_objSection *sec, t_instruction instr, t_objSecItem *prev)
 {
    t_objSecItem *itm;
 
    itm = malloc(sizeof(t_objSecItem));
    if (!itm)
-      return;
+      return NULL;
    itm->address = 0;
    itm->class = OBJ_SEC_ITM_CLASS_INSTR;
    itm->body.instr = instr;
-   objSecAppend(sec, itm);
+   objSecInsertAfter(sec, itm, prev);
+   return itm;
+}
+
+void objSecAppendInstruction(t_objSection *sec, t_instruction instr)
+{
+   objSecInsertInstructionAfter(sec, instr, sec->lastItem);
 }
 
 int objSecDeclareLabel(t_objSection *sec, t_objLabel *label)
@@ -197,9 +211,17 @@ uint32_t objSecGetSize(t_objSection *sec)
 }
 
 
-int objLabelIsDeclared(t_objLabel *lbl)
+t_objSecItem *objLabelGetPointedItem(t_objLabel *lbl)
 {
-   return lbl->pointer != NULL;
+   t_objSecItem *item = lbl->pointer;
+   while (item && item->next && item->class == OBJ_SEC_ITM_CLASS_VOID)
+      item = item->next;
+   return item;
+}
+
+const char *objLabelGetName(t_objLabel *lbl)
+{
+   return lbl->name;
 }
 
 uint32_t objLabelGetPointer(t_objLabel *lbl)
@@ -209,6 +231,27 @@ uint32_t objLabelGetPointer(t_objLabel *lbl)
    return lbl->pointer->address;
 }
 
+
+static int objSecExpandPseudoInstructions(t_objSection *sec)
+{
+   t_instruction buf[MAX_EXP_FACTOR];
+   int n, i;
+   t_objSecItem *itm;
+
+   for (itm = sec->items; itm != NULL; itm = itm->next) {
+      if (itm->class != OBJ_SEC_ITM_CLASS_INSTR)
+         continue;
+      
+      n = encExpandPseudoInstruction(itm->body.instr, buf);
+      if (n == 0)
+         return 0;
+      i = 0;
+      itm->body.instr = buf[i++];
+      for (; i < n; i++)
+         itm = objSecInsertInstructionAfter(sec, buf[i], itm);
+   }
+   return 1;
+}
 
 static uint32_t objSecMaterializeAddresses(t_objSection *sec, uint32_t baseAddr)
 {
@@ -235,55 +278,22 @@ static uint32_t objSecMaterializeAddresses(t_objSection *sec, uint32_t baseAddr)
    return curAddr;
 }
 
-void objMaterializeAddresses(t_object *obj)
-{
-   uint32_t curAddr = 0x1000;
-   curAddr = objSecMaterializeAddresses(obj->text, curAddr);
-   objSecMaterializeAddresses(obj->data, curAddr);
-}
-
-
-void objSecMaterializeInstructions(t_objSection *sec)
+static int objSecResolveImmediates(t_objSection *sec)
 {
    t_objSecItem *itm;
 
-   /* %pcrel_lo addressing needs to compensate for the fact that the instr.
-    * that loads the low part has a different PC than the one that loads the
-    * high part, so the argument does not point to the symbol address to load
-    * but to the instruction that loads the high part of the address...
-    * This can go wrong in too many ways (i.e. more than zero ways) */
    for (itm = sec->items; itm != NULL; itm = itm->next) {
-      t_objLabel *otherInstrLbl, *actualLbl;
-      t_objSecItem *otherInstr;
-      uint32_t pc, tgt;
-
       if (itm->class != OBJ_SEC_ITM_CLASS_INSTR)
          continue;
-      if (itm->body.instr.immMode != INSTR_IMM_LBL_PCREL_LO12)
-         continue;
-      
-      otherInstrLbl = itm->body.instr.label;
-      otherInstr = otherInstrLbl->pointer;
-      while (otherInstr && otherInstr->class == OBJ_SEC_ITM_CLASS_VOID)
-         otherInstr = otherInstr->next;
-      if (!otherInstr) {
-         fprintf(stderr, "label %s not declared\n", otherInstrLbl->name);
-         exit(1);
-      }
-      if (otherInstr->class != OBJ_SEC_ITM_CLASS_INSTR) {
-         fprintf(stderr, "argument to %%pcrel_lo must be a label to an instruction\n");
-         exit(1);
-      }
-      if (otherInstr->body.instr.immMode != INSTR_IMM_LBL_PCREL_HI20) {
-         fprintf(stderr, "argument to %%pcrel_lo must be a label to an instruction using %%pcrel_hi\n");
-         exit(1);
-      }
-      actualLbl = otherInstr->body.instr.label;
-      pc = otherInstr->address;
-      tgt = objLabelGetPointer(actualLbl);
-      itm->body.instr.constant = (tgt - pc) & 0xFFF;
-      itm->body.instr.immMode = INSTR_IMM_CONST;
+      if (!encResolveImmediates(&itm->body.instr, itm->address))
+         return 0;
    }
+   return 1;
+}
+
+static int objSecMaterializeInstructions(t_objSection *sec)
+{
+   t_objSecItem *itm;
 
    for (itm = sec->items; itm != NULL; itm = itm->next) {
       t_data tmp = { 0 };
@@ -291,16 +301,36 @@ void objSecMaterializeInstructions(t_objSection *sec)
       if (itm->class != OBJ_SEC_ITM_CLASS_INSTR)
          continue;
       
-      encodeInstruction(itm->body.instr, itm->address, &tmp);
+      if (!encPhysicalInstruction(itm->body.instr, itm->address, &tmp))
+         return 0;
       itm->class = OBJ_SEC_ITM_CLASS_DATA;
       itm->body.data = tmp;
    }
+   return 1;
 }
 
-void objMaterializeInstructions(t_object *obj)
+int objMaterialize(t_object *obj)
 {
-   objSecMaterializeInstructions(obj->text);
-   objSecMaterializeInstructions(obj->data);
+   uint32_t curAddr;
+
+   /* transform pseudo-instructions to normal instructions */
+   if (!objSecExpandPseudoInstructions(obj->text)) return 0;
+   if (!objSecExpandPseudoInstructions(obj->data)) return 0;
+
+   /* assign an address to every item in the object */
+   curAddr = objSecMaterializeAddresses(obj->text, 0x1000);
+   objSecMaterializeAddresses(obj->data, curAddr);
+
+   /* transform label references into constants */
+   objDump(obj);
+   if (!objSecResolveImmediates(obj->text)) return 0;
+   if (!objSecResolveImmediates(obj->data)) return 0;
+
+   /* transform instructions into data */
+   if (!objSecMaterializeInstructions(obj->text)) return 0;
+   if (!objSecMaterializeInstructions(obj->data)) return 0;
+
+   return 1;
 }
 
 
@@ -341,6 +371,7 @@ static void objSecDump(t_objSection *sec)
       printf("  },\n");
    }
    printf("}\n");
+   fflush(stdout);
 }
 
 void objDump(t_object *obj)

@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
    t_tokenID tok;
    t_object *obj;
    char *buf;
+   int tmp;
 
    if (argc < 3) {
       if (argc > 0)
@@ -24,10 +25,11 @@ int main(int argc, char *argv[])
    obj = parseObject(lex);
    /*objDump(obj);*/
    if (obj) {
-      objMaterializeAddresses(obj);
-      objMaterializeInstructions(obj);
+      if (!objMaterialize(obj))
+         exit(1);
       objDump(obj);
-      outputToELF(obj, argv[2]);
+      tmp = outputToELF(obj, argv[2]);
+      printf("output error = %d\n", tmp);
       deleteObject(obj);
    }
 

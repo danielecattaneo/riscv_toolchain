@@ -110,10 +110,10 @@ t_objSecItem *objSecGetItemList(t_objSection *sec);
 uint32_t objSecGetStart(t_objSection *sec);
 uint32_t objSecGetSize(t_objSection *sec);
 
-int objLabelIsDeclared(t_objLabel *lbl);
+t_objSecItem *objLabelGetPointedItem(t_objLabel *lbl);
+const char *objLabelGetName(t_objLabel *lbl);
 uint32_t objLabelGetPointer(t_objLabel *lbl);
 
-void objMaterializeAddresses(t_object *obj);
-void objMaterializeInstructions(t_object *obj);
+int objMaterialize(t_object *obj);
 
 #endif
