@@ -50,7 +50,13 @@ enum {
    INSTR_OPC_LUI,
    INSTR_OPC_AUIPC,
    INSTR_OPC_JAL,
-   INSTR_OPC_JALR
+   INSTR_OPC_JALR,
+   INSTR_OPC_BEQ,
+   INSTR_OPC_BNE,
+   INSTR_OPC_BLT,
+   INSTR_OPC_BGE,
+   INSTR_OPC_BLTU,
+   INSTR_OPC_BGEU
 };
 
 typedef int t_instrImmMode;

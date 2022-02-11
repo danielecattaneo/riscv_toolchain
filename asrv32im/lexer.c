@@ -350,6 +350,12 @@ static t_tokenID lexConsumeIdentifierOrKeyword(t_lexer *lex, char firstChar)
       { "auipc", TOK_MNEMONIC, INSTR_OPC_AUIPC},
       {   "jal", TOK_MNEMONIC, INSTR_OPC_JAL},
       {  "jalr", TOK_MNEMONIC, INSTR_OPC_JALR},
+      {   "beq", TOK_MNEMONIC, INSTR_OPC_BEQ},
+      {   "bne", TOK_MNEMONIC, INSTR_OPC_BNE},
+      {   "blt", TOK_MNEMONIC, INSTR_OPC_BLT},
+      {   "bge", TOK_MNEMONIC, INSTR_OPC_BGE},
+      {  "bltu", TOK_MNEMONIC, INSTR_OPC_BLTU},
+      {  "bgeu", TOK_MNEMONIC, INSTR_OPC_BGEU},
       {    NULL, TOK_UNRECOGNIZED}
    };
 #define KEYWORD_MAX 10

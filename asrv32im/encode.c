@@ -138,6 +138,12 @@ int encPhysicalInstruction(t_instruction instr, uint32_t pc, t_data *res)
       { INSTR_OPC_SW,     'S', ENC_OPCODE_STORE,  2, 0x00 << 5 },
       { INSTR_OPC_JAL,    'J', ENC_OPCODE_JAL,    0, 0         },
       { INSTR_OPC_JALR,   'I', ENC_OPCODE_JALR,   0, 0         },
+      { INSTR_OPC_BEQ,    'B', ENC_OPCODE_BRANCH, 0, 0         },
+      { INSTR_OPC_BNE,    'B', ENC_OPCODE_BRANCH, 1, 0         },
+      { INSTR_OPC_BLT,    'B', ENC_OPCODE_BRANCH, 4, 0         },
+      { INSTR_OPC_BGE,    'B', ENC_OPCODE_BRANCH, 5, 0         },
+      { INSTR_OPC_BLTU,   'B', ENC_OPCODE_BRANCH, 6, 0         },
+      { INSTR_OPC_BGEU,   'B', ENC_OPCODE_BRANCH, 7, 0         },
       { INSTR_OPC_ECALL,  'I', ENC_OPCODE_SYSTEM, 0, 0         },
       { INSTR_OPC_EBREAK, 'I', ENC_OPCODE_SYSTEM, 0, 1         },
       { -1 }
@@ -160,6 +166,9 @@ int encPhysicalInstruction(t_instruction instr, uint32_t pc, t_data *res)
          break;
       case 'S':
          buf = encPackSFormat(info->opcode, info->funct3, instr.src1, instr.src2, instr.constant | info->funct7);
+         break;
+      case 'B':
+         buf = encPackBFormat(info->opcode, info->funct3, instr.src1, instr.src2, instr.constant);
          break;
       case 'U':
          buf = encPackUFormat(info->opcode, instr.dest, instr.constant);
@@ -208,6 +217,7 @@ int encResolveImmediates(t_instruction *instr, uint32_t pc)
    t_objSecItem *otherInstr;
    int32_t imm;
    uint32_t tgt, otherPc;
+   int tooFar;
 
    if (instr->immMode == INSTR_IMM_CONST)
       return 1;
@@ -220,12 +230,25 @@ int encResolveImmediates(t_instruction *instr, uint32_t pc)
    switch (instr->immMode) {
       case INSTR_IMM_LBL:
          imm = objLabelGetPointer(instr->label) - pc;
-         if (instr->opcode == INSTR_OPC_JAL && (imm < -0x100000 || imm > 0xFFFFF)) {
-            fprintf(stderr, "JAL to label \"%s\" too far!\n", objLabelGetName(instr->label));
-            return 0;
+         tooFar = 0;
+         switch(instr->opcode) {
+            case INSTR_OPC_JAL:
+               tooFar = imm < -0x100000 || imm > 0xFFFFF;
+               break;
+            case INSTR_OPC_JALR:
+               tooFar = imm < -0x800 || imm > 0x7FF;
+               break;
+            case INSTR_OPC_BEQ:
+            case INSTR_OPC_BNE:
+            case INSTR_OPC_BLT:
+            case INSTR_OPC_BGE:
+            case INSTR_OPC_BLTU:
+            case INSTR_OPC_BGEU:
+               tooFar = imm < -0x1000 || imm > 0xFFF;
+               break;
          }
-         if (instr->opcode == INSTR_OPC_JALR && (imm < -0x800 || imm > 0x7FF)) {
-            fprintf(stderr, "JALR to label \"%s\" too far!\n", objLabelGetName(instr->label));
+         if (tooFar) {
+            fprintf(stderr, "jump to label \"%s\" too far!\n", objLabelGetName(instr->label));
             return 0;
          }
          break;

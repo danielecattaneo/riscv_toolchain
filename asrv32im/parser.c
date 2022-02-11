@@ -189,10 +189,10 @@ enum {
    FORMAT_LI,         /* mnemonic rd, imm         */
    FORMAT_JAL,        /* mnemonic rd, label       */
    FORMAT_JALR,       /* mnemonic rs1, rs2, imm   */
+   FORMAT_BRANCH,     /* mnemonic rs1, rs2, label */
    FORMAT_SYSTEM,     /* mnemonic                 */
 
    FORMAT_STORE_GL,   /* mnemonic rs2, label, rs1 */
-   FORMAT_BRANCH,     /* mnemonic rs1, rs2, label */
    FORMAT_JUMP,       /* mnemonic label           */
    FORMAT_LA          /* mnemonic rd, label       */
 };
@@ -228,18 +228,14 @@ static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
       /*
       case OPC_J:
          return FORMAT_JUMP;
-      case OPC_BEQ :
-      case OPC_BNE :
-      case OPC_BLT :
-      case OPC_BLTU:
-      case OPC_BGE :
-      case OPC_BGEU:
-      case OPC_BGT :
-      case OPC_BGTU:
-      case OPC_BLE :
-      case OPC_BLEU:
-         return FORMAT_BRANCH;
       */
+      case INSTR_OPC_BEQ :
+      case INSTR_OPC_BNE :
+      case INSTR_OPC_BLT :
+      case INSTR_OPC_BLTU:
+      case INSTR_OPC_BGE :
+      case INSTR_OPC_BGEU:
+         return FORMAT_BRANCH;
       case INSTR_OPC_LB:
       case INSTR_OPC_LH:
       case INSTR_OPC_LW:
@@ -360,6 +356,16 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
             return P_SYN_ERROR;
          if (parserExpect(state, TOK_RPAR, "expected parenthesis") != P_ACCEPT)
             return P_SYN_ERROR;
+         break;
+
+      case FORMAT_BRANCH:
+         if (expectRegister(state, &instr.src1, 0) != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (expectRegister(state, &instr.src2, 0) != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (expectLabel(state, &instr) != P_ACCEPT)
+            return P_SYN_ERROR;
+         instr.immMode = INSTR_IMM_LBL;
          break;
 
       case FORMAT_SYSTEM:
