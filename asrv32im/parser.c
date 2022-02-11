@@ -425,7 +425,9 @@ static t_parserError expectLine(t_parserState *state)
          parserEmitError(state, "label already declared");
       free(temp);
    }
-
+   
+   if (parserAccept(state, TOK_NEWLINE) == P_ACCEPT)
+      return P_ACCEPT;
    if (expectLineContent(state) != P_ACCEPT)
       return P_SYN_ERROR;
    return parserExpect(state, TOK_NEWLINE, "expected end of the line");   
