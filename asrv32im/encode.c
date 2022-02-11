@@ -245,6 +245,40 @@ int encExpandPseudoInstruction(t_instruction instr, t_instruction mInstBuf[MAX_E
          mInstSz++;
          break;
 
+      case INSTR_OPC_LB_G:
+      case INSTR_OPC_LH_G:
+      case INSTR_OPC_LW_G:
+      case INSTR_OPC_LBU_G:
+      case INSTR_OPC_LHU_G:
+         mInstBuf[mInstSz].opcode = INSTR_OPC_AUIPC;
+         mInstBuf[mInstSz].dest = instr.dest;
+         mInstBuf[mInstSz].immMode = INSTR_IMM_LBL_PCREL_HI20;
+         mInstBuf[mInstSz].label = instr.label;
+         mInstSz++;
+         mInstBuf[mInstSz].opcode = instr.opcode - INSTR_OPC_LB_G + INSTR_OPC_LB;
+         mInstBuf[mInstSz].dest = instr.dest;
+         mInstBuf[mInstSz].src1 = instr.dest;
+         mInstBuf[mInstSz].immMode = INSTR_IMM_LBL_PCREL_LO12_DIRECT;
+         mInstBuf[mInstSz].label = instr.label;
+         mInstSz++;
+         break;
+
+      case INSTR_OPC_SB_G:
+      case INSTR_OPC_SH_G:
+      case INSTR_OPC_SW_G:
+         mInstBuf[mInstSz].opcode = INSTR_OPC_AUIPC;
+         mInstBuf[mInstSz].dest = instr.dest;
+         mInstBuf[mInstSz].immMode = INSTR_IMM_LBL_PCREL_HI20;
+         mInstBuf[mInstSz].label = instr.label;
+         mInstSz++;
+         mInstBuf[mInstSz].opcode = instr.opcode - INSTR_OPC_SB_G + INSTR_OPC_SB;
+         mInstBuf[mInstSz].src1 = instr.dest;
+         mInstBuf[mInstSz].src2 = instr.src2;
+         mInstBuf[mInstSz].immMode = INSTR_IMM_LBL_PCREL_LO12_DIRECT;
+         mInstBuf[mInstSz].label = instr.label;
+         mInstSz++;
+         break;
+
       default:
          mInstBuf[mInstSz++] = instr;
    }

@@ -107,16 +107,25 @@ static t_parserError expectNumber(t_parserState *state, int32_t *res, int32_t mi
    return P_ACCEPT;
 }
 
-static t_parserError expectLabel(t_parserState *state, t_instruction *instr)
+static t_parserError acceptLabel(t_parserState *state, t_instruction *instr)
 {
    char *tmp;
    
-   if (parserExpect(state, TOK_ID, "expected a label identifier") != P_ACCEPT)
-      return P_SYN_ERROR;
+   if (parserAccept(state, TOK_ID) != P_ACCEPT)
+      return P_REJECT;
    
    tmp = lexGetLastTokenText(state->lex);
    instr->label = objGetLabel(state->object, tmp);
    free(tmp);
+   return P_ACCEPT;
+}
+
+static t_parserError expectLabel(t_parserState *state, t_instruction *instr)
+{
+   if (acceptLabel(state, instr) != P_ACCEPT) {
+      parserEmitError(state, "expected a label identifier");
+      return P_SYN_ERROR;
+   }
    return P_ACCEPT;
 }
 
@@ -317,21 +326,43 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
          break;
 
       case FORMAT_LOAD:
+         if (expectRegister(state, &instr.dest, 0) != P_ACCEPT)
+            return P_SYN_ERROR;
+         if (acceptLabel(state, &instr) == P_ACCEPT) {
+            instr.opcode = instr.opcode - INSTR_OPC_LB + INSTR_OPC_LB_G;
+            instr.immMode = INSTR_IMM_LBL;
+         } else {
+            if (expectImmediate(state, &instr, IMM_SIZE_12) != P_ACCEPT)
+               return P_SYN_ERROR;
+            if (parserExpect(state, TOK_LPAR, "expected parenthesis") != P_ACCEPT)
+               return P_SYN_ERROR;
+            if (expectRegister(state, &instr.src1, 1) != P_ACCEPT)
+               return P_SYN_ERROR;
+            if (parserExpect(state, TOK_RPAR, "expected parenthesis") != P_ACCEPT)
+               return P_SYN_ERROR;
+         }
+         break;
+
       case FORMAT_STORE:
-         if (format == FORMAT_LOAD)
-            err = expectRegister(state, &instr.dest, 0);
-         else
-            err = expectRegister(state, &instr.src2, 0);
-         if (err != P_ACCEPT)
+         if (expectRegister(state, &instr.src2, 0) != P_ACCEPT)
             return P_SYN_ERROR;
-         if (expectImmediate(state, &instr, IMM_SIZE_12) != P_ACCEPT)
-            return P_SYN_ERROR;
-         if (parserExpect(state, TOK_LPAR, "expected parenthesis") != P_ACCEPT)
-            return P_SYN_ERROR;
-         if (expectRegister(state, &instr.src1, 1) != P_ACCEPT)
-            return P_SYN_ERROR;
-         if (parserExpect(state, TOK_RPAR, "expected parenthesis") != P_ACCEPT)
-            return P_SYN_ERROR;
+         if (acceptLabel(state, &instr) == P_ACCEPT) {
+            if (parserExpect(state, TOK_COMMA, "expected comma") != P_ACCEPT)
+               return P_SYN_ERROR;
+            if (expectRegister(state, &instr.dest, 1) != P_ACCEPT)
+               return P_SYN_ERROR;
+            instr.opcode = instr.opcode - INSTR_OPC_SB + INSTR_OPC_SB_G;
+            instr.immMode = INSTR_IMM_LBL;
+         } else {
+            if (expectImmediate(state, &instr, IMM_SIZE_12) != P_ACCEPT)
+               return P_SYN_ERROR;
+            if (parserExpect(state, TOK_LPAR, "expected parenthesis") != P_ACCEPT)
+               return P_SYN_ERROR;
+            if (expectRegister(state, &instr.src1, 1) != P_ACCEPT)
+               return P_SYN_ERROR;
+            if (parserExpect(state, TOK_RPAR, "expected parenthesis") != P_ACCEPT)
+               return P_SYN_ERROR;
+         }
          break;
 
       case FORMAT_LI:
