@@ -18,6 +18,9 @@
 #define ENC_OPCODE_JAL      ENC_OPCODE_CODE(0x1B)
 #define ENC_OPCODE_SYSTEM   ENC_OPCODE_CODE(0x1C)
 
+#define HI_20(x) ((((x) >> 12) + ((x) & 0x800 ? 1 : 0)) & 0xFFFFF)
+#define LO_12(x) ((x) & 0xFFF)
+
 
 static uint32_t encPackRFormat(int opcode, int funct3, int funct7, int rd, int rs1, int rs2)
 {
@@ -211,6 +214,23 @@ int encExpandPseudoInstruction(t_instruction instr, t_instruction mInstBuf[MAX_E
          mInstBuf[mInstSz].constant = 0;
          mInstSz++;
          break;
+
+      case INSTR_OPC_LI:
+         if (instr.constant > 0x7FF || instr.constant < -0x800) {
+            mInstBuf[mInstSz].opcode = INSTR_OPC_LUI;
+            mInstBuf[mInstSz].dest = instr.dest;
+            mInstBuf[mInstSz].immMode = INSTR_IMM_CONST;
+            mInstBuf[mInstSz].constant = HI_20(instr.constant);
+            mInstSz++;
+         }
+         mInstBuf[mInstSz].opcode = INSTR_OPC_ADDI;
+         mInstBuf[mInstSz].dest = instr.dest;
+         mInstBuf[mInstSz].src1 = instr.dest;
+         mInstBuf[mInstSz].immMode = INSTR_IMM_CONST;
+         mInstBuf[mInstSz].constant = LO_12(instr.constant);
+         mInstSz++;
+         break;
+
       default:
          mInstBuf[mInstSz++] = instr;
    }
@@ -263,12 +283,12 @@ int encResolveImmediates(t_instruction *instr, uint32_t pc)
 
       case INSTR_IMM_LBL_LO12:
          imm = objLabelGetPointer(instr->label);
-         imm &= 0xFFF;
+         imm = LO_12(imm);
          break;
 
       case INSTR_IMM_LBL_HI20:
          imm = objLabelGetPointer(instr->label);
-         imm = ((imm >> 12) + (imm & 0x800 ? 1 : 0)) & 0xFFFFF;
+         imm = HI_20(imm);
          break;
 
       case INSTR_IMM_LBL_PCREL_LO12:
@@ -295,12 +315,13 @@ int encResolveImmediates(t_instruction *instr, uint32_t pc)
             return 0;
          }
          otherPc = otherInstr->address;
-         imm = (objLabelGetPointer(actualLbl) - pc) & 0xFFF;
+         imm = objLabelGetPointer(actualLbl) - pc;
+         imm = LO_12(imm);
          break;
 
       case INSTR_IMM_LBL_PCREL_HI20:
          imm = objLabelGetPointer(instr->label) - pc;
-         imm = ((imm >> 12) + (imm & 0x800 ? 1 : 0)) & 0xFFFFF;
+         imm = HI_20(imm);
          break;
    }
 

@@ -364,6 +364,7 @@ static t_tokenID lexConsumeIdentifierOrKeyword(t_lexer *lex, char firstChar)
       {   "bge", TOK_MNEMONIC, INSTR_OPC_BGE},
       {  "bltu", TOK_MNEMONIC, INSTR_OPC_BLTU},
       {  "bgeu", TOK_MNEMONIC, INSTR_OPC_BGEU},
+      {    "li", TOK_MNEMONIC, INSTR_OPC_LI},
       {    NULL, TOK_UNRECOGNIZED}
    };
 #define KEYWORD_MAX 10

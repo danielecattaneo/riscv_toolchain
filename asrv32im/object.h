@@ -17,6 +17,7 @@ typedef struct t_objSection t_objSection;
 typedef int t_instrRegID;
 typedef int t_instrOpcode;
 enum {
+   /* real instructions */
    INSTR_OPC_ADD,
    INSTR_OPC_SUB,
    INSTR_OPC_XOR,
@@ -52,7 +53,6 @@ enum {
    INSTR_OPC_SB,
    INSTR_OPC_SH,
    INSTR_OPC_SW,
-   INSTR_OPC_NOP,
    INSTR_OPC_ECALL,
    INSTR_OPC_EBREAK,
    INSTR_OPC_LUI,
@@ -64,7 +64,10 @@ enum {
    INSTR_OPC_BLT,
    INSTR_OPC_BGE,
    INSTR_OPC_BLTU,
-   INSTR_OPC_BGEU
+   INSTR_OPC_BGEU,
+   /* pseudo-instructions */
+   INSTR_OPC_NOP,
+   INSTR_OPC_LI
 };
 
 typedef int t_instrImmMode;
