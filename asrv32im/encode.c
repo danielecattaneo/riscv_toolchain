@@ -204,6 +204,7 @@ int encPhysicalInstruction(t_instruction instr, uint32_t pc, t_data *res)
 int encExpandPseudoInstruction(t_instruction instr, t_instruction mInstBuf[MAX_EXP_FACTOR])
 {
    int mInstSz = 0;
+   int onlyAddi;
 
    switch (instr.opcode) {
       case INSTR_OPC_NOP:
@@ -222,10 +223,16 @@ int encExpandPseudoInstruction(t_instruction instr, t_instruction mInstBuf[MAX_E
             mInstBuf[mInstSz].immMode = INSTR_IMM_CONST;
             mInstBuf[mInstSz].constant = HI_20(instr.constant);
             mInstSz++;
+            onlyAddi = 0;
+         } else {
+            onlyAddi = 1;
          }
          mInstBuf[mInstSz].opcode = INSTR_OPC_ADDI;
          mInstBuf[mInstSz].dest = instr.dest;
-         mInstBuf[mInstSz].src1 = instr.dest;
+         if (onlyAddi)
+            mInstBuf[mInstSz].src1 = 0;
+         else
+            mInstBuf[mInstSz].src1 = instr.dest;
          mInstBuf[mInstSz].immMode = INSTR_IMM_CONST;
          mInstBuf[mInstSz].constant = LO_12(instr.constant);
          mInstSz++;
