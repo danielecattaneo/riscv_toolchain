@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
    if (obj) {
       if (!objMaterialize(obj))
          exit(1);
-      objDump(obj);
+      /*objDump(obj);*/
       tmp = outputToELF(obj, argv[2]);
       printf("output error = %d\n", tmp);
       deleteObject(obj);

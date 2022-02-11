@@ -322,7 +322,6 @@ int objMaterialize(t_object *obj)
    objSecMaterializeAddresses(obj->data, curAddr);
 
    /* transform label references into constants */
-   objDump(obj);
    if (!objSecResolveImmediates(obj->text)) return 0;
    if (!objSecResolveImmediates(obj->data)) return 0;
 

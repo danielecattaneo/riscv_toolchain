@@ -205,10 +205,14 @@ static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
       case INSTR_OPC_AND:
       case INSTR_OPC_OR :
       case INSTR_OPC_XOR:
-      /*
       case INSTR_OPC_MUL:
+      case INSTR_OPC_MULH:
+      case INSTR_OPC_MULHSU:
+      case INSTR_OPC_MULHU:
       case INSTR_OPC_DIV:
-      */
+      case INSTR_OPC_DIVU:
+      case INSTR_OPC_REM:
+      case INSTR_OPC_REMU:
       case INSTR_OPC_SLL:
       case INSTR_OPC_SRL:
       case INSTR_OPC_SRA:
