@@ -188,14 +188,14 @@ enum {
    FORMAT_STORE,      /* mnemonic rs2, imm(rs1)   */
    FORMAT_LUI,        /* mnemonic rd, imm         */
    FORMAT_LI,         /* mnemonic rd, number      */
+   FORMAT_LA,         /* mnemonic rd, label       */
    FORMAT_JAL,        /* mnemonic rd, label       */
    FORMAT_JALR,       /* mnemonic rs1, rs2, imm   */
    FORMAT_BRANCH,     /* mnemonic rs1, rs2, label */
    FORMAT_SYSTEM,     /* mnemonic                 */
 
    FORMAT_STORE_GL,   /* mnemonic rs2, label, rs1 */
-   FORMAT_JUMP,       /* mnemonic label           */
-   FORMAT_LA          /* mnemonic rd, label       */
+   FORMAT_JUMP        /* mnemonic label           */
 };
 
 static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
@@ -261,13 +261,11 @@ static t_instrFormat instrOpcodeToFormat(t_instrOpcode opcode)
       */
       case INSTR_OPC_LI:
          return FORMAT_LI;
+      case INSTR_OPC_LA:
+         return FORMAT_LA;
       case INSTR_OPC_LUI:
       case INSTR_OPC_AUIPC:
          return FORMAT_LUI;
-      /*
-      case OPC_LA:
-         return FORMAT_LA;
-      */
       case INSTR_OPC_JAL:
          return FORMAT_JAL;
       case INSTR_OPC_JALR:
@@ -350,6 +348,7 @@ static t_parserError expectInstruction(t_parserState *state, t_tokenID lastToken
             return P_SYN_ERROR;
          break;
 
+      case FORMAT_LA:
       case FORMAT_JAL:
          if (expectRegister(state, &instr.dest, 0) != P_ACCEPT)
             return P_SYN_ERROR;

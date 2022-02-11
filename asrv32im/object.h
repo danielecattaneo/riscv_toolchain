@@ -67,7 +67,8 @@ enum {
    INSTR_OPC_BGEU,
    /* pseudo-instructions */
    INSTR_OPC_NOP,
-   INSTR_OPC_LI
+   INSTR_OPC_LI,
+   INSTR_OPC_LA
 };
 
 typedef int t_instrImmMode;
@@ -77,6 +78,7 @@ enum {
    INSTR_IMM_LBL_LO12,
    INSTR_IMM_LBL_HI20,
    INSTR_IMM_LBL_PCREL_LO12,
+   INSTR_IMM_LBL_PCREL_LO12_DIRECT,
    INSTR_IMM_LBL_PCREL_HI20
 };
 
