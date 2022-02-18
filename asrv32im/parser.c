@@ -163,7 +163,7 @@ static t_parserError expectImmediate(t_parserState *state, t_instruction *instr,
          min = -0x80000;
          max = 0x7FFFF;
       } else
-         assert("invalid immediate size");
+         assert(0 && "invalid immediate size");
       
       return expectNumber(state, &instr->constant, min, max);
    }

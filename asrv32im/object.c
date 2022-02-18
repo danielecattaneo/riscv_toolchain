@@ -89,6 +89,8 @@ void deleteObject(t_object *obj)
       free(lbl->name);
       free(lbl);
    }
+
+   free(obj);
 }
 
 

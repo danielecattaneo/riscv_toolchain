@@ -188,7 +188,7 @@ int encPhysicalInstruction(t_instruction instr, uint32_t pc, t_data *res)
          buf = encPackJFormat(info->opcode, instr.dest, instr.constant);
          break;
       default:
-         assert("invalid instruction encoding type");
+         assert(0 && "invalid instruction encoding type");
    }
 
    res->initialized = 1;
@@ -403,7 +403,7 @@ int encResolveImmediates(t_instruction *instr, uint32_t pc)
             return 0;
          }
          otherPc = otherInstr->address;
-         imm = objLabelGetPointer(actualLbl) - pc;
+         imm = objLabelGetPointer(actualLbl) - otherPc;
          imm = LO_12(imm);
          break;
 
@@ -411,6 +411,9 @@ int encResolveImmediates(t_instruction *instr, uint32_t pc)
          imm = objLabelGetPointer(instr->label) - pc;
          imm = HI_20(imm);
          break;
+      
+      default:
+         assert(0 && "invalid immediate mode!");
    }
 
    instr->constant = imm;

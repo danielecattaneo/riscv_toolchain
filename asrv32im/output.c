@@ -322,8 +322,10 @@ t_outError outputToELF(t_object *obj, const char *fname)
    head.s[SEC_ID_SYMTAB] = outputStrTabToELFSHdr(&strTbl, strtabAddr, strtabSecName);
 
    fp = fopen(fname, "w");
-   if (fp == NULL)
-      return OUT_FILE_ERROR;
+   if (fp == NULL) {
+      res = OUT_FILE_ERROR;
+      goto exit;
+   }
    if (fwrite(&head, sizeof(t_outputELFHead), 1, fp) < 1) {
       res = OUT_FILE_ERROR;
       goto exit;
