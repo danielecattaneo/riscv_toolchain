@@ -67,7 +67,6 @@ t_cpuStatus cpuTick(void)
 {
    uint32_t nextInst;
    t_memError fetchErr;
-   char disasm[80];
 
    if (lastStatus != CPU_STATUS_OK)
       return lastStatus;
@@ -77,13 +76,6 @@ t_cpuStatus cpuTick(void)
       lastStatus = CPU_STATUS_MEMORY_FAULT;
       return lastStatus;
    }
-   /*
-   isaDisassemble(nextInst, disasm, 80);
-   fprintf(stderr, "%08x: %s (%08x)\n", cpuPC, disasm, nextInst);
-   for (int i=0; i<32; i++)
-      fprintf(stderr, "x%d=%08x ", i, cpuRegs[i]);
-   fprintf(stderr, "\n");
-   */
    
    switch (ISA_INST_OPCODE(nextInst)) {
       case ISA_INST_OPCODE_LOAD:
