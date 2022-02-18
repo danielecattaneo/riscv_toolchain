@@ -104,7 +104,7 @@ t_svStatus svVMTick(void)
       if (cpuStatus == CPU_STATUS_ECALL_TRAP) {
          status = svHandleEnvCall();
          if (status == SV_STATUS_RUNNING)
-            cpuStatus = cpuClearLastFault();
+            cpuClearLastFault();
       } else if (cpuStatus == CPU_STATUS_EBREAK_TRAP) {
          if (dbgGetEnabled()) {
             dbgRequestEnter();
